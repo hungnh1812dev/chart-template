@@ -395,13 +395,13 @@ Spec: [SPEC.md ยง v0.3.0](../SPEC.md#v030-health-probes-and-image-pull-policy) ย
 ### Checkpoint F: features complete
 - [x] `./tests/run.sh` green, and the golden diff against 0.2.0 is exactly the pullPolicy line
 - [x] `helm lint` clean with probes on and off
-- [ ] Human reviews the rendered probes block
+- [x] Human reviews the rendered probes block
 
 ---
 
 ## Phase 7: Release
 
-### - [ ] Task 16: Bump to 0.3.0, update the README and example helmfile
+### - [x] Task 16: Bump to 0.3.0, update the README and example helmfile
 
 **Description:** Set `Chart.yaml` to `version: 0.3.0`, and bump the README and example version references to `0.3.0`.
 
@@ -413,13 +413,13 @@ In the README:
 In the example helmfile, add a commented-out `probes` block.
 
 **Acceptance criteria:**
-- [ ] `Chart.yaml` is at `0.3.0`, and the golden diff is still empty
-- [ ] The README documents the pull policy default and its caveat, and the probes
-- [ ] The example helmfile still renders, and its uncommented probes block renders the probes
+- [x] `Chart.yaml` is at `0.3.0`, and the golden diff is still empty
+- [x] The README documents the pull policy default and its caveat, and the probes
+- [x] The example helmfile still renders, and its uncommented probes block renders the probes
 
 **Verification:**
-- [ ] `./tests/run.sh`
-- [ ] `grep -rn '0\.2\.0' README.md examples/` returns nothing, apart from any "0.2.0+" feature notes, which are rewritten or confirmed as intended
+- [x] `./tests/run.sh`
+- [x] `grep -rn '0\.2\.0' README.md examples/` returns nothing, apart from any "0.2.0+" feature notes, which are rewritten or confirmed as intended
 
 **Dependencies:** Task 15
 

@@ -203,10 +203,10 @@ probes render (values, deployment)
 ### Checkpoint F: features complete
 - [x] `./tests/run.sh` green, and the golden diff against 0.2.0 is exactly the pullPolicy line
 - [x] `helm lint` clean with probes on and off
-- [ ] Human reviews the rendered probes block
+- [x] Human reviews the rendered probes block
 
 ### Phase 7: Release
-- [ ] Task 16: Bump to 0.3.0, update the README and example helmfile
+- [x] Task 16: Bump to 0.3.0, update the README and example helmfile
 
 ### Checkpoint G: ready to ship 0.3.0
 - [ ] All local verification commands pass

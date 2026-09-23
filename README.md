@@ -46,7 +46,7 @@ releases:
     namespace: {{ $appNamespace }}-{{ $appEnv }}
     createNamespace: true
     chart: oci://ghcr.io/hungnh1812dev/helmfile-chart-template
-    version: 0.2.0
+    version: 0.3.0
     values:
       - appName: {{ $appName }}
         serviceName: {{ $serviceName }}
@@ -66,7 +66,7 @@ APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helm
 
 If an env var is missing, helmfile stops with `required env var APP_ENV is not set`.
 
-**Optional values:** `replicaCount` (default `1`), `resources`, `env` (a list of extra container env vars), and `image.pullPolicy` (default `IfNotPresent`). See [values.yaml](charts/helmfile-chart-template/values.yaml).
+**Optional values:** `replicaCount` (default `1`), `resources`, `env` (a list of extra container env vars), and `image.pullPolicy` (default `Always`, see below). See [values.yaml](charts/helmfile-chart-template/values.yaml).
 
 ### Service secret
 
@@ -102,6 +102,43 @@ Set `initContainers.enabled: true` and list plain Kubernetes container specs und
 - When `secrets.enabled` is true, the chart adds the Secret to the end of each init container's `envFrom`. It keeps any `envFrom` entries you set.
 - `enabled: false` renders no init containers, even if `containers` is set, so you can switch them off per environment.
 - `enabled: true` with an empty `containers` list fails rendering.
+
+### Health probes
+
+Set `probes.enabled: true` to add HTTP liveness and readiness probes to the app container. Both call `GET <path>` on `APP_PORT` (the container port named `http`). Init containers never get probes.
+
+**Make sure your app serves the path before you turn probes on.** Otherwise Kubernetes keeps restarting the pod (liveness) or never sends it traffic (readiness).
+
+```yaml
+        probes:
+          enabled: true
+          liveness:
+            path: /healthz          # default
+          readiness:
+            path: /readyz           # default /healthz
+```
+
+| Setting               | Liveness default | Readiness default |
+|-----------------------|------------------|-------------------|
+| `path`                | `/healthz`       | `/healthz`        |
+| `initialDelaySeconds` | `10`             | `0`               |
+| `periodSeconds`       | `10`             | `5`               |
+| `timeoutSeconds`      | `1`              | `1`               |
+| `failureThreshold`    | `3`              | `3`               |
+
+Override only the fields you need; the rest keep their defaults. The path must start with `/`. Unknown keys, such as a typo like `periodSecond`, fail rendering.
+
+### Image pull policy
+
+Since 0.3.0, `image.pullPolicy` defaults to `Always`: the node pulls the image tag again every time a pod starts, so a re-pushed tag is picked up.
+
+`Always` does **not** redeploy anything by itself. If you run `helmfile apply` with the same tag and values, the Deployment is unchanged and no pods restart, so nothing is pulled. To pick up a re-pushed tag, restart the pods:
+
+```bash
+kubectl -n shop-dev rollout restart deployment/shop-api-dev
+```
+
+Or deploy a new tag, which is the more reproducible option. To go back to the pre-0.3.0 behavior, set `image.pullPolicy: IfNotPresent`.
 
 ## Releasing a new version
 
