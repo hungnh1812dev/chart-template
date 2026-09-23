@@ -10,6 +10,11 @@
 {{- $name -}}
 {{- end -}}
 
+{{/* Pre-existing Secret loaded via envFrom when secrets.enabled; the chart never creates it. */}}
+{{- define "chart.secretName" -}}
+{{- printf "%s-%s-secrets-%s" .Values.appName .Values.serviceName .Values.appEnv -}}
+{{- end -}}
+
 {{/* Input formats are enforced by values.schema.json; this checks what the schema can't. */}}
 {{- define "chart.validate" -}}
 {{- $ns := include "chart.fullNamespace" . -}}

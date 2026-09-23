@@ -110,6 +110,22 @@ assert_has "$(app_part "$init_deploy")" '^        - name: api$'  "app container 
 off_deploy="$(render_deploy -f "$INIT_VALUES" --set initContainers.enabled=false)"
 assert_lacks "$off_deploy" 'initContainers:' "enabled=false renders no initContainers even with containers set"
 
+# --- Service secret (pre-existing Secret, referenced via envFrom) ---
+assert_lacks "$deploy" 'envFrom:' "default render has no envFrom"
+
+secret_rendered="$(helm template test "$CHART" -f "$VALUES" --namespace "$NAMESPACE" --set secrets.enabled=true)" \
+  || fail "helm template failed with secrets.enabled=true"
+secret_deploy="$(doc_of_kind Deployment "$secret_rendered")"
+secret_app="$(app_part "$secret_deploy")"
+assert_has "$secret_app" '^          envFrom:$'                          "secrets: app container has envFrom"
+assert_has "$secret_app" '^            - secretRef:$'                    "secrets: app envFrom uses secretRef"
+assert_has "$secret_app" '^                name: shop-api-secrets-dev$'  "secrets: Secret name is <app>-<svc>-secrets-<env>"
+assert_lacks "$secret_deploy" 'initContainers:'                         "secrets alone renders no initContainers"
+assert_lacks "$secret_rendered" '^kind: Secret$'                        "chart never renders a Secret"
+kinds="$(grep -c '^kind: ' <<<"$secret_rendered")"
+[[ "$kinds" == 2 ]] || fail "secrets: exactly 2 resources rendered (got $kinds)"
+pass "secrets: exactly 2 resources rendered"
+
 # --- Guards: invalid input must fail rendering with a message naming the problem ---
 # usage: expect_fail <desc> <expected error regex> [extra helm args...]
 expect_fail() {

@@ -229,26 +229,26 @@ Fixtures: `tests/values-ci.yaml` covers the default path with both features off.
 ---
 
 ### Checkpoint C: init containers complete
-- [ ] `./tests/run.sh` green, golden diff empty
-- [ ] `helm lint` clean with and without `values-init.yaml`
-- [ ] Human reviews the rendered `initContainers` block
+- [x] `./tests/run.sh` green, golden diff empty
+- [x] `helm lint` clean with and without `values-init.yaml`
+- [x] Human reviews the rendered `initContainers` block
 
 ---
 
 ## Phase 4: Service secret
 
-### - [ ] Task 10: Secret `envFrom` on the app container behind a flag
+### - [x] Task 10: Secret `envFrom` on the app container behind a flag
 
 **Description:** Add the `chart.secretName` helper (`<appName>-<serviceName>-secrets-<appEnv>`), the `secrets: {enabled: false}` default with a comment that the Secret must already exist, and the schema for `secrets.enabled` (boolean). When the flag is on, the app container gets `envFrom: [{secretRef: {name: <secretName>}}]` after `env`.
 
 **Acceptance criteria:**
-- [ ] With `--set secrets.enabled=true`, the app container has `envFrom` with `name: shop-api-secrets-dev`, and there is no `initContainers:`
-- [ ] The default render has no `envFrom:`, and the golden diff is empty
-- [ ] No render produces `kind: Secret`, and the resource count stays 2
+- [x] With `--set secrets.enabled=true`, the app container has `envFrom` with `name: shop-api-secrets-dev`, and there is no `initContainers:`
+- [x] The default render has no `envFrom:`, and the golden diff is empty
+- [x] No render produces `kind: Secret`, and the resource count stays 2
 
 **Verification:**
-- [ ] `./tests/run.sh`
-- [ ] `helm lint ... --set secrets.enabled=true`
+- [x] `./tests/run.sh`
+- [x] `helm lint ... --set secrets.enabled=true`
 
 **Dependencies:** Task 7 (it also edits the files touched by Task 8, so it runs after Task 9)
 

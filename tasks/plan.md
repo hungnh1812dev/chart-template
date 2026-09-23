@@ -127,12 +127,12 @@ The two feature tracks are independent until Task 11. They are kept sequential a
 - [x] Task 9: Guards for init containers (schema + enabled-but-empty)
 
 ### Checkpoint C: init containers complete
-- [ ] `./tests/run.sh` green, golden diff empty
-- [ ] `helm lint` clean with and without `values-init.yaml`
-- [ ] Human reviews the rendered `initContainers` block
+- [x] `./tests/run.sh` green, golden diff empty
+- [x] `helm lint` clean with and without `values-init.yaml`
+- [x] Human reviews the rendered `initContainers` block
 
 ### Phase 4: Service secret
-- [ ] Task 10: Secret `envFrom` on the app container behind a flag
+- [x] Task 10: Secret `envFrom` on the app container behind a flag
 - [ ] Task 11: Secret `envFrom` into init containers, keeping the consumer's `envFrom`
 
 ### Checkpoint D: features complete
