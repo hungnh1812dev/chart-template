@@ -54,6 +54,11 @@ assert_has "$deploy" '^  namespace: shop-dev$'                      "Deployment 
 assert_has "$deploy" '^  replicas: 1$'                              "Deployment replicas default to 1"
 assert_has "$deploy" 'image: "ghcr.io/acme/shop-api:1.2.3"$'        "container image is repository:tag"
 assert_has "$deploy" 'containerPort: 8080$'                         "containerPort is appPort"
+assert_has "$deploy" '^          imagePullPolicy: Always$'          "imagePullPolicy defaults to Always"
+pull_override="$(helm template test "$CHART" -f "$VALUES" --namespace "$NAMESPACE" --set image.pullPolicy=IfNotPresent)" \
+  || fail "helm template failed with image.pullPolicy override"
+assert_has "$(doc_of_kind Deployment "$pull_override")" '^          imagePullPolicy: IfNotPresent$' \
+  "image.pullPolicy override is honored"
 match_labels="$(sed -n '/^    matchLabels:$/,/^  template:$/p' <<<"$deploy")"
 assert_has "$match_labels" 'app.kubernetes.io/instance: shop-api-dev$' "Deployment selector matches on instance"
 pod_labels="$(sed -n '/^  template:$/,/^    spec:$/p' <<<"$deploy")"
@@ -145,6 +150,46 @@ sr_line="$(grep -n 'secretRef:' <<<"$keep_init" | cut -d: -f1)"
 [[ -n "$sr_line" ]] && (( cm_line < sr_line )) || fail "secretRef appended after consumer envFrom"
 pass "secretRef appended after consumer envFrom"
 
+# --- Health probes (app container only) ---
+# Print the body of an app-container field (e.g. livenessProbe) from a Deployment.
+probe_block() {
+  awk -v key="          $1:" '
+    $0 == key { on = 1; next }
+    on && /^ {0,10}[^ ]/ { exit }
+    on { print }
+  ' <<<"$(app_part "$2")"
+}
+
+assert_lacks "$deploy" 'livenessProbe:|readinessProbe:' "default render has no probes"
+
+probe_deploy="$(render_deploy --set probes.enabled=true)"
+live="$(probe_block livenessProbe "$probe_deploy")"
+ready="$(probe_block readinessProbe "$probe_deploy")"
+[[ -n "$live" && -n "$ready" ]] || fail "probes.enabled renders liveness and readiness probes"
+pass "probes.enabled renders liveness and readiness probes"
+assert_has "$live"  '^ +path: /healthz$'          "liveness: default path /healthz"
+assert_has "$live"  '^ +port: http$'              "liveness: named port http"
+assert_has "$live"  '^ +initialDelaySeconds: 10$' "liveness: default initialDelaySeconds"
+assert_has "$live"  '^ +periodSeconds: 10$'       "liveness: default periodSeconds"
+assert_has "$live"  '^ +timeoutSeconds: 1$'       "liveness: default timeoutSeconds"
+assert_has "$live"  '^ +failureThreshold: 3$'     "liveness: default failureThreshold"
+assert_has "$ready" '^ +path: /healthz$'          "readiness: default path /healthz"
+assert_has "$ready" '^ +port: http$'              "readiness: named port http"
+assert_has "$ready" '^ +initialDelaySeconds: 0$'  "readiness: default initialDelaySeconds"
+assert_has "$ready" '^ +periodSeconds: 5$'        "readiness: default periodSeconds"
+
+ovr_deploy="$(render_deploy --set probes.enabled=true --set probes.readiness.path=/readyz --set probes.liveness.periodSeconds=30)"
+ovr_live="$(probe_block livenessProbe "$ovr_deploy")"
+ovr_ready="$(probe_block readinessProbe "$ovr_deploy")"
+assert_has "$ovr_ready" '^ +path: /readyz$'           "probes: readiness.path override applied"
+assert_has "$ovr_live"  '^ +path: /healthz$'          "probes: readiness.path override leaves liveness path"
+assert_has "$ovr_live"  '^ +periodSeconds: 30$'       "probes: liveness.periodSeconds override applied"
+assert_has "$ovr_live"  '^ +initialDelaySeconds: 10$' "probes: partial override keeps other defaults"
+
+probe_init="$(init_part "$(render_deploy -f "$INIT_VALUES" --set probes.enabled=true)")"
+[[ -n "$probe_init" ]] || fail "init containers rendered alongside probes"
+assert_lacks "$probe_init" 'Probe:' "init containers never get probes"
+
 # Every flag combination: exactly Deployment + Service, never a Secret.
 for combo in "" "-f $INIT_VALUES" "--set secrets.enabled=true" "-f $INIT_VALUES --set secrets.enabled=true"; do
   # shellcheck disable=SC2086
@@ -180,6 +225,12 @@ expect_fail "rejects init container without image" 'containers/0.*image' \
   --set initContainers.enabled=true --set-json 'initContainers.containers=[{"name":"migrate"}]'
 expect_fail "rejects uppercase init container name" 'containers/0/name' \
   --set initContainers.enabled=true --set-json 'initContainers.containers=[{"name":"Migrate","image":"x:1"}]'
+expect_fail "rejects probe path without leading /" 'liveness/path' \
+  --set probes.liveness.path=healthz
+expect_fail "rejects probe periodSeconds 0"        'liveness/periodSeconds' \
+  --set probes.liveness.periodSeconds=0
+expect_fail "rejects unknown probe key"            'periodSecond' \
+  --set probes.readiness.periodSecond=5
 
 helm template test "$CHART" -f "$VALUES" --namespace "$NAMESPACE" --set "appName=${LONG_APP}" >/dev/null \
   || fail "accepts full name of exactly 63 chars"
@@ -187,7 +238,7 @@ pass "accepts full name of exactly 63 chars"
 
 # --- Example consumer helmfile (renders the local chart) ---
 HELMFILE="$ROOT/examples/helmfile.yaml.gotmpl"
-hf_rendered="$(APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 \
+hf_rendered="$(APP_NAME=shop APP_SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 \
   helmfile -f "$HELMFILE" template --skip-deps 2>&1)" || fail "helmfile template failed: $hf_rendered"
 hf_svc="$(doc_of_kind Service "$hf_rendered")"
 hf_deploy="$(doc_of_kind Deployment "$hf_rendered")"
@@ -196,7 +247,7 @@ assert_has "$hf_svc"    '^  namespace: shop-dev$'  "helmfile: release namespace 
 assert_has "$hf_svc"    '^    - port: 8080$'       "helmfile: APP_PORT reaches chart as integer"
 assert_has "$hf_deploy" '^  name: shop-api-dev$'   "helmfile: Deployment named from env vars"
 
-if out="$(APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_PORT=8080 \
+if out="$(APP_NAME=shop APP_SERVICE_NAME=api APP_NAMESPACE=shop APP_PORT=8080 \
   env -u APP_ENV helmfile -f "$HELMFILE" template --skip-deps 2>&1)"; then
   fail "helmfile: missing APP_ENV should fail"
 fi

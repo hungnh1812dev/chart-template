@@ -7,6 +7,17 @@
       "type": "string",
       "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
       "description": "Lowercase letters, digits and '-'; must start and end with a letter or digit."
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "pattern": "^/" },
+        "initialDelaySeconds": { "type": "integer", "minimum": 0 },
+        "periodSeconds": { "type": "integer", "minimum": 1 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+        "failureThreshold": { "type": "integer", "minimum": 1 }
+      }
     }
   },
   "properties": {
@@ -48,6 +59,14 @@
       "type": "object",
       "properties": {
         "enabled": { "type": "boolean" }
+      }
+    },
+    "probes": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "liveness": { "$ref": "#/definitions/probe" },
+        "readiness": { "$ref": "#/definitions/probe" }
       }
     }
   }
