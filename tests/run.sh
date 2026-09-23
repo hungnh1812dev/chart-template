@@ -238,7 +238,7 @@ pass "accepts full name of exactly 63 chars"
 
 # --- Example consumer helmfile (renders the local chart) ---
 HELMFILE="$ROOT/examples/helmfile.yaml.gotmpl"
-hf_rendered="$(APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 \
+hf_rendered="$(APP_NAME=shop APP_SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 \
   helmfile -f "$HELMFILE" template --skip-deps 2>&1)" || fail "helmfile template failed: $hf_rendered"
 hf_svc="$(doc_of_kind Service "$hf_rendered")"
 hf_deploy="$(doc_of_kind Deployment "$hf_rendered")"
@@ -247,7 +247,7 @@ assert_has "$hf_svc"    '^  namespace: shop-dev$'  "helmfile: release namespace 
 assert_has "$hf_svc"    '^    - port: 8080$'       "helmfile: APP_PORT reaches chart as integer"
 assert_has "$hf_deploy" '^  name: shop-api-dev$'   "helmfile: Deployment named from env vars"
 
-if out="$(APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_PORT=8080 \
+if out="$(APP_NAME=shop APP_SERVICE_NAME=api APP_NAMESPACE=shop APP_PORT=8080 \
   env -u APP_ENV helmfile -f "$HELMFILE" template --skip-deps 2>&1)"; then
   fail "helmfile: missing APP_ENV should fail"
 fi

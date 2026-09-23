@@ -2,9 +2,9 @@
 # (helmfile v1 only renders Go templates in *.gotmpl files).
 #
 # Usage:
-#   APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helmfile apply
+#   APP_NAME=shop APP_SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helmfile apply
 {{- $appName      := requiredEnv "APP_NAME" }}
-{{- $serviceName  := requiredEnv "SERVICE_NAME" }}
+{{- $serviceName  := requiredEnv "APP_SERVICE_NAME" }}
 {{- $appNamespace := requiredEnv "APP_NAMESPACE" }}
 {{- $appEnv       := requiredEnv "APP_ENV" }}
 {{- $appPort      := requiredEnv "APP_PORT" }}
@@ -28,7 +28,7 @@ releases:
           tag: "1.2.3"
         # Optional, all off by default:
         # secrets:
-        #   enabled: true   # envFrom Secret <APP_NAME>-<SERVICE_NAME>-secrets-<APP_ENV>; must already exist
+        #   enabled: true   # envFrom Secret <APP_NAME>-<APP_SERVICE_NAME>-secrets-<APP_ENV>; must already exist
         # initContainers:
         #   enabled: true
         #   containers:
