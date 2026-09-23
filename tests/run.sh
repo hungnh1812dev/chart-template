@@ -130,6 +130,12 @@ expect_fail "rejects uppercase serviceName" 'serviceName'               --set se
 expect_fail "rejects full name > 63 chars"  'exceeds 63'                --set "appName=${LONG_APP}a"
 expect_fail "rejects wrong release namespace" 'must be deployed to namespace "shop-dev"' --namespace default
 expect_fail "rejects appPort 0"             'appPort'                   --set appPort=0
+expect_fail "rejects initContainers enabled with empty list" 'initContainers.containers is empty' \
+  --set initContainers.enabled=true
+expect_fail "rejects init container without image" 'containers/0.*image' \
+  --set initContainers.enabled=true --set-json 'initContainers.containers=[{"name":"migrate"}]'
+expect_fail "rejects uppercase init container name" 'containers/0/name' \
+  --set initContainers.enabled=true --set-json 'initContainers.containers=[{"name":"Migrate","image":"x:1"}]'
 
 helm template test "$CHART" -f "$VALUES" --namespace "$NAMESPACE" --set "appName=${LONG_APP}" >/dev/null \
   || fail "accepts full name of exactly 63 chars"

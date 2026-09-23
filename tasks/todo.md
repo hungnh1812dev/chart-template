@@ -207,18 +207,18 @@ Fixtures: `tests/values-ci.yaml` covers the default path with both features off.
 
 ---
 
-### - [ ] Task 9: Guards for init containers
+### - [x] Task 9: Guards for init containers
 
 **Description:** Add the schema for `initContainers`: `enabled` is a boolean and `containers` is an array. Each item requires `name` and `image`, and `name` must match `dnsName`. In `chart.validate`, fail when `enabled` is true but `containers` is empty.
 
 **Acceptance criteria:**
-- [ ] `--set initContainers.enabled=true` fails with a message containing `initContainers.containers is empty`
-- [ ] An init container with no `image` fails with a message naming `image`
-- [ ] An init container named `Migrate` fails on the schema; `values-ci.yaml` and `values-init.yaml` still render
+- [x] `--set initContainers.enabled=true` fails with a message containing `initContainers.containers is empty`
+- [x] An init container with no `image` fails with a message naming `image`
+- [x] An init container named `Migrate` fails on the schema; `values-ci.yaml` and `values-init.yaml` still render
 
 **Verification:**
-- [ ] `./tests/run.sh` (3 new `expect_fail` cases, with the missing-image and uppercase-name cases set through `--set-json`)
-- [ ] `helm lint` clean for both fixtures
+- [x] `./tests/run.sh` (3 new `expect_fail` cases, with the missing-image and uppercase-name cases set through `--set-json`)
+- [x] `helm lint` clean for both fixtures
 
 **Dependencies:** Task 8
 

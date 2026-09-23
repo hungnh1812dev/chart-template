@@ -26,6 +26,23 @@
     },
     "replicaCount": { "type": "integer", "minimum": 0 },
     "resources": { "type": "object" },
-    "env": { "type": "array" }
+    "env": { "type": "array" },
+    "initContainers": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "containers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "image"],
+            "properties": {
+              "name": { "$ref": "#/definitions/dnsName" },
+              "image": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
   }
 }

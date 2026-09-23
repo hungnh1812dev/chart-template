@@ -16,6 +16,9 @@
 {{- if ne .Release.Namespace $ns -}}
 {{- fail (printf "release must be deployed to namespace %q (<appNamespace>-<appEnv>), got %q" $ns .Release.Namespace) -}}
 {{- end -}}
+{{- if and .Values.initContainers.enabled (empty .Values.initContainers.containers) -}}
+{{- fail "initContainers.enabled is true but initContainers.containers is empty" -}}
+{{- end -}}
 {{- end -}}
 
 {{- define "chart.selectorLabels" -}}

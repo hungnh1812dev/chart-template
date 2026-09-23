@@ -124,7 +124,7 @@ The two feature tracks are independent until Task 11. They are kept sequential a
 ### Phase 3: Init containers
 - [x] Task 7: Golden baseline for the default render
 - [x] Task 8: Render init containers behind a flag
-- [ ] Task 9: Guards for init containers (schema + enabled-but-empty)
+- [x] Task 9: Guards for init containers (schema + enabled-but-empty)
 
 ### Checkpoint C: init containers complete
 - [ ] `./tests/run.sh` green, golden diff empty
