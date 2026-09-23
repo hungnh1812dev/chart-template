@@ -282,24 +282,24 @@ Fixtures: `tests/values-ci.yaml` covers the default path with both features off.
 ### Checkpoint D: features complete
 - [x] All four flag combinations (off/off, init only, secret only, both) render as the SPEC testing strategy describes
 - [x] No combination renders a `Secret`, and the resource count is 2 everywhere
-- [ ] Human reviews the full Deployment render with both flags on
+- [x] Human reviews the full Deployment render with both flags on
 
 ---
 
 ## Phase 5: Release
 
-### - [ ] Task 12: Bump to 0.2.0, update the README and example helmfile
+### - [x] Task 12: Bump to 0.2.0, update the README and example helmfile
 
 **Description:** Set `Chart.yaml` `version: 0.2.0`. Add README sections for `initContainers` and `secrets`, including the Secret naming convention, a `kubectl create secret` example, and a note that missing Secret means `CreateContainerConfigError`. Update every `0.1.0` reference in the README and example to `0.2.0`, and add commented-out usage of both options to the example helmfile.
 
 **Acceptance criteria:**
-- [ ] `Chart.yaml` is at `0.2.0`, and the golden diff is still empty (the chart has no version label)
-- [ ] The README documents both flags, the Secret name convention and the pre-create requirement
-- [ ] The example helmfile still renders with `helmfile template`, and its OCI comment references `0.2.0`
+- [x] `Chart.yaml` is at `0.2.0`, and the golden diff is still empty (the chart has no version label)
+- [x] The README documents both flags, the Secret name convention and the pre-create requirement
+- [x] The example helmfile still renders with `helmfile template`, and its OCI comment references `0.2.0`
 
 **Verification:**
-- [ ] `./tests/run.sh` (includes the example helmfile render)
-- [ ] `grep -rn '0\.1\.0' README.md examples/` returns nothing
+- [x] `./tests/run.sh` (includes the example helmfile render)
+- [x] `grep -rn '0\.1\.0' README.md examples/` returns nothing
 
 **Dependencies:** Tasks 9 and 11
 

@@ -140,7 +140,7 @@ The two feature tracks are independent until Task 11. They are kept sequential a
 - [x] No combination renders a `Secret`, and the resource count is 2 everywhere
 
 ### Phase 5: Release
-- [ ] Task 12: Bump to 0.2.0, update the README and example helmfile
+- [x] Task 12: Bump to 0.2.0, update the README and example helmfile
 
 ### Checkpoint E: ready to ship 0.2.0
 - [ ] All local verification commands pass
