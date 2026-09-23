@@ -313,3 +313,123 @@ Fixtures: `tests/values-ci.yaml` covers the default path with both features off.
 - [ ] All local verification commands from SPEC pass
 - [ ] Human approves merge to `main`
 - [ ] After the push, the workflow is green and `ghcr.io/hungnh1812dev/helmfile-chart-template:0.2.0` is visible
+
+---
+
+# v0.3.0: Health probes and image pull policy
+
+Spec: [SPEC.md § v0.3.0](../SPEC.md#v030-health-probes-and-image-pull-policy) · Plan: [plan.md](plan.md#v030-health-probes-and-image-pull-policy)
+
+---
+
+## Phase 6: Pull policy and probes
+
+### - [ ] Task 13: Default `image.pullPolicy` to `Always`
+
+**Description:** Change the `image.pullPolicy` default in `values.yaml` to `Always`, and regenerate `tests/golden/default.yaml` in the same commit. Add assertions for the new default and for overriding it.
+
+**Acceptance criteria:**
+- [ ] The default render has `imagePullPolicy: Always`
+- [ ] `--set image.pullPolicy=IfNotPresent` renders `imagePullPolicy: IfNotPresent`
+- [ ] `git diff tests/golden/default.yaml` shows exactly one changed line: `IfNotPresent` → `Always`
+
+**Verification:**
+- [ ] `./tests/run.sh` (the new assertion fails before the change; the golden check fails until the file is regenerated)
+- [ ] `git diff --stat tests/golden/default.yaml` shows 1 insertion and 1 deletion
+
+**Dependencies:** None
+
+**Files:** `values.yaml`, `tests/golden/default.yaml`, `tests/run.sh`
+
+**Scope:** XS
+
+---
+
+### - [ ] Task 14: Render liveness and readiness probes behind `probes.enabled`
+
+**Description:** Add the `probes` block to `values.yaml` (off by default, with `/healthz` and the timings from the spec). In the app container, after `ports`, render `livenessProbe` and `readinessProbe` as `httpGet {path, port: http}` plus `omit $probe "path" | toYaml`, only when `probes.enabled` is true.
+
+**Acceptance criteria:**
+- [ ] The default render has no probes, and the golden diff is empty
+- [ ] `--set probes.enabled=true` renders both probes on `port: http` with `path: /healthz` and the default timings. Overriding `readiness.path` changes only readiness, and overriding `liveness.periodSeconds` keeps the other liveness defaults
+- [ ] With `-f values-init.yaml --set probes.enabled=true`, the init section has no probes
+
+**Verification:**
+- [ ] `./tests/run.sh`
+- [ ] `helm lint ... --set probes.enabled=true`
+
+**Dependencies:** Task 13 (it only has to follow the golden regeneration; the code is independent)
+
+**Files:** `values.yaml`, `templates/deployment.yaml`, `tests/run.sh`
+
+**Scope:** S
+
+---
+
+### - [ ] Task 15: Schema guards for probes
+
+**Description:** Add the `probes` schema:
+- `enabled` is a boolean
+- `liveness` and `readiness` are objects with `additionalProperties: false`
+- `path` matches `^/`
+- `initialDelaySeconds` is 0 or more
+- `periodSeconds`, `timeoutSeconds` and `failureThreshold` are 1 or more
+
+**Acceptance criteria:**
+- [ ] `--set probes.liveness.path=healthz` fails, with a message naming `path`
+- [ ] `--set probes.liveness.periodSeconds=0` fails, with a message naming `periodSeconds`
+- [ ] `--set probes.readiness.periodSecond=5` (a typo) fails, and all valid combinations still render
+
+**Verification:**
+- [ ] `./tests/run.sh` (3 new `expect_fail` cases)
+- [ ] `helm lint` clean with probes on and off
+
+**Dependencies:** Task 14
+
+**Files:** `values.schema.json`, `tests/run.sh`
+
+**Scope:** S
+
+---
+
+### Checkpoint F: features complete
+- [ ] `./tests/run.sh` green, and the golden diff against 0.2.0 is exactly the pullPolicy line
+- [ ] `helm lint` clean with probes on and off
+- [ ] Human reviews the rendered probes block
+
+---
+
+## Phase 7: Release
+
+### - [ ] Task 16: Bump to 0.3.0, update the README and example helmfile
+
+**Description:** Set `Chart.yaml` to `version: 0.3.0`, and bump the README and example version references to `0.3.0`.
+
+In the README:
+- Document the `Always` default and how to override it.
+- Explain that `Always` only pulls on pod start, and point to `kubectl rollout restart`.
+- Add a Health probes section covering the flag, the paths, the timings, and the advice to set the paths before turning probes on.
+
+In the example helmfile, add a commented-out `probes` block.
+
+**Acceptance criteria:**
+- [ ] `Chart.yaml` is at `0.3.0`, and the golden diff is still empty
+- [ ] The README documents the pull policy default and its caveat, and the probes
+- [ ] The example helmfile still renders, and its uncommented probes block renders the probes
+
+**Verification:**
+- [ ] `./tests/run.sh`
+- [ ] `grep -rn '0\.2\.0' README.md examples/` returns nothing, apart from any "0.2.0+" feature notes, which are rewritten or confirmed as intended
+
+**Dependencies:** Task 15
+
+**Files:** `Chart.yaml`, `README.md`, `examples/helmfile.yaml.gotmpl`
+
+**Scope:** S
+
+---
+
+### Checkpoint G: ready to ship 0.3.0
+- [ ] All local verification commands pass
+- [ ] Human approves merge to `main`
+- [ ] After the push, the workflow is green and `ghcr.io/hungnh1812dev/helmfile-chart-template:0.3.0` is visible
