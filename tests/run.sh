@@ -46,4 +46,22 @@ assert_has "$svc" '^  selector:$'                                   "Service has
 selector="$(sed -n '/^  selector:$/,$p' <<<"$svc")"
 assert_has "$selector" '^    app.kubernetes.io/instance: shop-api-dev$' "selector matches on instance"
 
+# --- Deployment ---
+deploy="$(doc_of_kind Deployment "$rendered")"
+[[ -n "$deploy" ]] || fail "Deployment rendered"
+assert_has "$deploy" '^  name: shop-api-dev$'                       "Deployment name is <app>-<svc>-<env>"
+assert_has "$deploy" '^  namespace: shop-dev$'                      "Deployment namespace is <ns>-<env>"
+assert_has "$deploy" '^  replicas: 1$'                              "Deployment replicas default to 1"
+assert_has "$deploy" 'image: "ghcr.io/acme/shop-api:1.2.3"$'        "container image is repository:tag"
+assert_has "$deploy" 'containerPort: 8080$'                         "containerPort is appPort"
+match_labels="$(sed -n '/^    matchLabels:$/,/^  template:$/p' <<<"$deploy")"
+assert_has "$match_labels" 'app.kubernetes.io/instance: shop-api-dev$' "Deployment selector matches on instance"
+pod_labels="$(sed -n '/^  template:$/,/^    spec:$/p' <<<"$deploy")"
+assert_has "$pod_labels" 'app.kubernetes.io/instance: shop-api-dev$'   "pod labels match the Service selector"
+
+# --- Resource count ---
+kinds="$(grep -c '^kind: ' <<<"$rendered")"
+[[ "$kinds" == 2 ]] || fail "exactly 2 resources rendered (got $kinds)"
+pass "exactly 2 resources rendered"
+
 echo "All tests passed."

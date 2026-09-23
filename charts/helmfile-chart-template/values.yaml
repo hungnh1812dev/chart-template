@@ -6,3 +6,12 @@ serviceName: ""
 appNamespace: ""
 appEnv: ""
 appPort: 8080
+
+image:
+  repository: ""   # required
+  tag: ""          # required
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+resources: {}
+env: []            # extra container env vars, e.g. [{name: FOO, value: bar}]

@@ -34,7 +34,7 @@ Test inputs used throughout: `appName=shop serviceName=api appNamespace=shop app
 
 ---
 
-### - [ ] Task 2: Deployment slice
+### - [x] Task 2: Deployment slice
 
 **Description:** Add a Deployment named `<fullServiceName>` with one container using `image.repository:image.tag`, `containerPort: appPort`, `replicaCount`, `resources`, and `env`. Its pod labels must match the Service selector.
 
