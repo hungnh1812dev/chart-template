@@ -150,6 +150,46 @@ sr_line="$(grep -n 'secretRef:' <<<"$keep_init" | cut -d: -f1)"
 [[ -n "$sr_line" ]] && (( cm_line < sr_line )) || fail "secretRef appended after consumer envFrom"
 pass "secretRef appended after consumer envFrom"
 
+# --- Health probes (app container only) ---
+# Print the body of an app-container field (e.g. livenessProbe) from a Deployment.
+probe_block() {
+  awk -v key="          $1:" '
+    $0 == key { on = 1; next }
+    on && /^ {0,10}[^ ]/ { exit }
+    on { print }
+  ' <<<"$(app_part "$2")"
+}
+
+assert_lacks "$deploy" 'livenessProbe:|readinessProbe:' "default render has no probes"
+
+probe_deploy="$(render_deploy --set probes.enabled=true)"
+live="$(probe_block livenessProbe "$probe_deploy")"
+ready="$(probe_block readinessProbe "$probe_deploy")"
+[[ -n "$live" && -n "$ready" ]] || fail "probes.enabled renders liveness and readiness probes"
+pass "probes.enabled renders liveness and readiness probes"
+assert_has "$live"  '^ +path: /healthz$'          "liveness: default path /healthz"
+assert_has "$live"  '^ +port: http$'              "liveness: named port http"
+assert_has "$live"  '^ +initialDelaySeconds: 10$' "liveness: default initialDelaySeconds"
+assert_has "$live"  '^ +periodSeconds: 10$'       "liveness: default periodSeconds"
+assert_has "$live"  '^ +timeoutSeconds: 1$'       "liveness: default timeoutSeconds"
+assert_has "$live"  '^ +failureThreshold: 3$'     "liveness: default failureThreshold"
+assert_has "$ready" '^ +path: /healthz$'          "readiness: default path /healthz"
+assert_has "$ready" '^ +port: http$'              "readiness: named port http"
+assert_has "$ready" '^ +initialDelaySeconds: 0$'  "readiness: default initialDelaySeconds"
+assert_has "$ready" '^ +periodSeconds: 5$'        "readiness: default periodSeconds"
+
+ovr_deploy="$(render_deploy --set probes.enabled=true --set probes.readiness.path=/readyz --set probes.liveness.periodSeconds=30)"
+ovr_live="$(probe_block livenessProbe "$ovr_deploy")"
+ovr_ready="$(probe_block readinessProbe "$ovr_deploy")"
+assert_has "$ovr_ready" '^ +path: /readyz$'           "probes: readiness.path override applied"
+assert_has "$ovr_live"  '^ +path: /healthz$'          "probes: readiness.path override leaves liveness path"
+assert_has "$ovr_live"  '^ +periodSeconds: 30$'       "probes: liveness.periodSeconds override applied"
+assert_has "$ovr_live"  '^ +initialDelaySeconds: 10$' "probes: partial override keeps other defaults"
+
+probe_init="$(init_part "$(render_deploy -f "$INIT_VALUES" --set probes.enabled=true)")"
+[[ -n "$probe_init" ]] || fail "init containers rendered alongside probes"
+assert_lacks "$probe_init" 'Probe:' "init containers never get probes"
+
 # Every flag combination: exactly Deployment + Service, never a Secret.
 for combo in "" "-f $INIT_VALUES" "--set secrets.enabled=true" "-f $INIT_VALUES --set secrets.enabled=true"; do
   # shellcheck disable=SC2086

@@ -345,18 +345,18 @@ Spec: [SPEC.md ยง v0.3.0](../SPEC.md#v030-health-probes-and-image-pull-policy) ย
 
 ---
 
-### - [ ] Task 14: Render liveness and readiness probes behind `probes.enabled`
+### - [x] Task 14: Render liveness and readiness probes behind `probes.enabled`
 
 **Description:** Add the `probes` block to `values.yaml` (off by default, with `/healthz` and the timings from the spec). In the app container, after `ports`, render `livenessProbe` and `readinessProbe` as `httpGet {path, port: http}` plus `omit $probe "path" | toYaml`, only when `probes.enabled` is true.
 
 **Acceptance criteria:**
-- [ ] The default render has no probes, and the golden diff is empty
-- [ ] `--set probes.enabled=true` renders both probes on `port: http` with `path: /healthz` and the default timings. Overriding `readiness.path` changes only readiness, and overriding `liveness.periodSeconds` keeps the other liveness defaults
-- [ ] With `-f values-init.yaml --set probes.enabled=true`, the init section has no probes
+- [x] The default render has no probes, and the golden diff is empty
+- [x] `--set probes.enabled=true` renders both probes on `port: http` with `path: /healthz` and the default timings. Overriding `readiness.path` changes only readiness, and overriding `liveness.periodSeconds` keeps the other liveness defaults
+- [x] With `-f values-init.yaml --set probes.enabled=true`, the init section has no probes
 
 **Verification:**
-- [ ] `./tests/run.sh`
-- [ ] `helm lint ... --set probes.enabled=true`
+- [x] `./tests/run.sh`
+- [x] `helm lint ... --set probes.enabled=true`
 
 **Dependencies:** Task 13 (it only has to follow the golden regeneration; the code is independent)
 

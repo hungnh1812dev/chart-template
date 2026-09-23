@@ -27,3 +27,18 @@ secrets:
   enabled: false   # set true to load Secret <appName>-<serviceName>-secrets-<appEnv>
                    # into the app container and all init containers via envFrom.
                    # The Secret must already exist in <appNamespace>-<appEnv>.
+
+probes:
+  enabled: false   # set true to add liveness + readiness httpGet probes on appPort (port "http")
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+  readiness:
+    path: /healthz
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    timeoutSeconds: 1
+    failureThreshold: 3
