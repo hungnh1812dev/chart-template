@@ -366,7 +366,7 @@ Spec: [SPEC.md ยง v0.3.0](../SPEC.md#v030-health-probes-and-image-pull-policy) ย
 
 ---
 
-### - [ ] Task 15: Schema guards for probes
+### - [x] Task 15: Schema guards for probes
 
 **Description:** Add the `probes` schema:
 - `enabled` is a boolean
@@ -376,13 +376,13 @@ Spec: [SPEC.md ยง v0.3.0](../SPEC.md#v030-health-probes-and-image-pull-policy) ย
 - `periodSeconds`, `timeoutSeconds` and `failureThreshold` are 1 or more
 
 **Acceptance criteria:**
-- [ ] `--set probes.liveness.path=healthz` fails, with a message naming `path`
-- [ ] `--set probes.liveness.periodSeconds=0` fails, with a message naming `periodSeconds`
-- [ ] `--set probes.readiness.periodSecond=5` (a typo) fails, and all valid combinations still render
+- [x] `--set probes.liveness.path=healthz` fails, with a message naming `path`
+- [x] `--set probes.liveness.periodSeconds=0` fails, with a message naming `periodSeconds`
+- [x] `--set probes.readiness.periodSecond=5` (a typo) fails, and all valid combinations still render
 
 **Verification:**
-- [ ] `./tests/run.sh` (3 new `expect_fail` cases)
-- [ ] `helm lint` clean with probes on and off
+- [x] `./tests/run.sh` (3 new `expect_fail` cases)
+- [x] `helm lint` clean with probes on and off
 
 **Dependencies:** Task 14
 
@@ -393,8 +393,8 @@ Spec: [SPEC.md ยง v0.3.0](../SPEC.md#v030-health-probes-and-image-pull-policy) ย
 ---
 
 ### Checkpoint F: features complete
-- [ ] `./tests/run.sh` green, and the golden diff against 0.2.0 is exactly the pullPolicy line
-- [ ] `helm lint` clean with probes on and off
+- [x] `./tests/run.sh` green, and the golden diff against 0.2.0 is exactly the pullPolicy line
+- [x] `helm lint` clean with probes on and off
 - [ ] Human reviews the rendered probes block
 
 ---

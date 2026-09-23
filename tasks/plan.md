@@ -198,11 +198,11 @@ probes render (values, deployment)
 ### Phase 6: Pull policy and probes
 - [x] Task 13: Default `image.pullPolicy` to `Always` (and regenerate the golden file)
 - [x] Task 14: Render liveness and readiness probes behind `probes.enabled`
-- [ ] Task 15: Schema guards for probes
+- [x] Task 15: Schema guards for probes
 
 ### Checkpoint F: features complete
-- [ ] `./tests/run.sh` green, and the golden diff against 0.2.0 is exactly the pullPolicy line
-- [ ] `helm lint` clean with probes on and off
+- [x] `./tests/run.sh` green, and the golden diff against 0.2.0 is exactly the pullPolicy line
+- [x] `helm lint` clean with probes on and off
 - [ ] Human reviews the rendered probes block
 
 ### Phase 7: Release

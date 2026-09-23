@@ -225,6 +225,12 @@ expect_fail "rejects init container without image" 'containers/0.*image' \
   --set initContainers.enabled=true --set-json 'initContainers.containers=[{"name":"migrate"}]'
 expect_fail "rejects uppercase init container name" 'containers/0/name' \
   --set initContainers.enabled=true --set-json 'initContainers.containers=[{"name":"Migrate","image":"x:1"}]'
+expect_fail "rejects probe path without leading /" 'liveness/path' \
+  --set probes.liveness.path=healthz
+expect_fail "rejects probe periodSeconds 0"        'liveness/periodSeconds' \
+  --set probes.liveness.periodSeconds=0
+expect_fail "rejects unknown probe key"            'periodSecond' \
+  --set probes.readiness.periodSecond=5
 
 helm template test "$CHART" -f "$VALUES" --namespace "$NAMESPACE" --set "appName=${LONG_APP}" >/dev/null \
   || fail "accepts full name of exactly 63 chars"
