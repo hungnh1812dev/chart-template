@@ -64,4 +64,29 @@ kinds="$(grep -c '^kind: ' <<<"$rendered")"
 [[ "$kinds" == 2 ]] || fail "exactly 2 resources rendered (got $kinds)"
 pass "exactly 2 resources rendered"
 
+# --- Guards: invalid input must fail rendering with a message naming the problem ---
+# usage: expect_fail <desc> <expected error regex> [extra helm args...]
+expect_fail() {
+  local desc="$1" expected="$2"; shift 2
+  local out
+  if out="$(helm template test "$CHART" -f "$VALUES" --namespace "$NAMESPACE" "$@" 2>&1)"; then
+    fail "$desc: rendering should have failed"
+  fi
+  grep -Eq -- "$expected" <<<"$out" || fail "$desc: unexpected error: $out"
+  pass "$desc"
+}
+
+LONG_APP="$(printf 'a%.0s' {1..55})"   # 55 + "-api-dev" = 63 ok; 56 → 64
+
+expect_fail "rejects missing appName"       'appName'                   --set appName=
+expect_fail "rejects missing image.tag"     'tag'                       --set image.tag=
+expect_fail "rejects uppercase serviceName" 'serviceName'               --set serviceName=API
+expect_fail "rejects full name > 63 chars"  'exceeds 63'                --set "appName=${LONG_APP}a"
+expect_fail "rejects wrong release namespace" 'must be deployed to namespace "shop-dev"' --namespace default
+expect_fail "rejects appPort 0"             'appPort'                   --set appPort=0
+
+helm template test "$CHART" -f "$VALUES" --namespace "$NAMESPACE" --set "appName=${LONG_APP}" >/dev/null \
+  || fail "accepts full name of exactly 63 chars"
+pass "accepts full name of exactly 63 chars"
+
 echo "All tests passed."

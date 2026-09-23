@@ -18,7 +18,7 @@ Test inputs used throughout: `appName=shop serviceName=api appNamespace=shop app
 - [ ] `tests/run.sh` exits 0 on pass and non-zero with a message on the first failed assertion
 
 **Verification:**
-- [ ] `helm lint charts/helmfile-chart-template -f tests/values-ci.yaml`
+- [ ] `helm lint charts/helmfile-chart-template -f tests/values-ci.yaml --namespace shop-dev`
 - [ ] `./tests/run.sh`
 
 **Dependencies:** None
@@ -55,7 +55,7 @@ Test inputs used throughout: `appName=shop serviceName=api appNamespace=shop app
 
 ---
 
-### - [ ] Task 3: Input guards + values schema + failure tests
+### - [x] Task 3: Input guards + values schema + failure tests
 
 **Description:** Make bad input fail at render time with clear messages: required inputs and image values, DNS-1123 name pattern, full service name ≤ 63 chars, and `.Release.Namespace` = `<appNamespace>-<appEnv>`. Add `values.schema.json` for types (appPort integer 1–65535). Extend `run.sh` with expected-failure cases.
 

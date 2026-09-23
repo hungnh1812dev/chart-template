@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["appName", "serviceName", "appNamespace", "appEnv", "appPort", "image"],
+  "definitions": {
+    "dnsName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+      "description": "Lowercase letters, digits and '-'; must start and end with a letter or digit."
+    }
+  },
+  "properties": {
+    "appName": { "$ref": "#/definitions/dnsName" },
+    "serviceName": { "$ref": "#/definitions/dnsName" },
+    "appNamespace": { "$ref": "#/definitions/dnsName" },
+    "appEnv": { "$ref": "#/definitions/dnsName" },
+    "appPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string", "minLength": 1 },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "replicaCount": { "type": "integer", "minimum": 0 },
+    "resources": { "type": "object" },
+    "env": { "type": "array" }
+  }
+}

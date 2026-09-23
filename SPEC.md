@@ -57,7 +57,7 @@ APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helm
 
 ```bash
 # Lint chart with example values
-helm lint charts/helmfile-chart-template -f tests/values-ci.yaml
+helm lint charts/helmfile-chart-template -f tests/values-ci.yaml --namespace shop-dev
 
 # Render manifests locally
 helm template test charts/helmfile-chart-template -f tests/values-ci.yaml --namespace shop-dev

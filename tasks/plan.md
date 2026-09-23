@@ -45,7 +45,7 @@ Chart.yaml + values.yaml + _helpers.tpl (naming)
 ### Phase 1: Chart
 - [x] Task 1: Chart scaffold + naming helpers + Service slice, with test harness
 - [x] Task 2: Deployment slice
-- [ ] Task 3: Input guards + values schema + failure tests
+- [x] Task 3: Input guards + values schema + failure tests
 
 ### Checkpoint A: chart complete
 - [ ] `helm lint` clean, `./tests/run.sh` green (happy path + all failure cases)

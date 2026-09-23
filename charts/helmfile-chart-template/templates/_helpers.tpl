@@ -3,7 +3,19 @@
 {{- end -}}
 
 {{- define "chart.fullServiceName" -}}
-{{- printf "%s-%s-%s" .Values.appName .Values.serviceName .Values.appEnv -}}
+{{- $name := printf "%s-%s-%s" .Values.appName .Values.serviceName .Values.appEnv -}}
+{{- if gt (len $name) 63 -}}
+{{- fail (printf "full service name %q exceeds 63 chars (%d)" $name (len $name)) -}}
+{{- end -}}
+{{- $name -}}
+{{- end -}}
+
+{{/* Input formats are enforced by values.schema.json; this checks what the schema can't. */}}
+{{- define "chart.validate" -}}
+{{- $ns := include "chart.fullNamespace" . -}}
+{{- if ne .Release.Namespace $ns -}}
+{{- fail (printf "release must be deployed to namespace %q (<appNamespace>-<appEnv>), got %q" $ns .Release.Namespace) -}}
+{{- end -}}
 {{- end -}}
 
 {{- define "chart.selectorLabels" -}}
