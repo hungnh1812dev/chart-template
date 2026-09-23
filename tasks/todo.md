@@ -186,18 +186,18 @@ Fixtures: `tests/values-ci.yaml` covers the default path with both features off.
 
 ---
 
-### - [ ] Task 8: Render init containers behind a flag
+### - [x] Task 8: Render init containers behind a flag
 
 **Description:** Add the `initContainers: {enabled: false, containers: []}` defaults. In `deployment.yaml`, emit `initContainers:` before `containers:` only when `enabled` is true, building the list and then calling `toYaml` once (see the plan). Add the `tests/values-init.yaml` fixture and a helper in `run.sh` that splits the Deployment into its init part and its app part.
 
 **Acceptance criteria:**
-- [ ] The default render has no `initContainers:`, and the golden diff is empty
-- [ ] `-f values-init.yaml` renders `initContainers:` above `containers:`, containing `name: migrate`, the image and the command
-- [ ] `values-init.yaml` with `--set initContainers.enabled=false` renders no `initContainers:` (the flag wins)
+- [x] The default render has no `initContainers:`, and the golden diff is empty
+- [x] `-f values-init.yaml` renders `initContainers:` above `containers:`, containing `name: migrate`, the image and the command
+- [x] `values-init.yaml` with `--set initContainers.enabled=false` renders no `initContainers:` (the flag wins)
 
 **Verification:**
-- [ ] `./tests/run.sh`
-- [ ] `helm lint charts/helmfile-chart-template -f tests/values-ci.yaml -f tests/values-init.yaml --namespace shop-dev`
+- [x] `./tests/run.sh`
+- [x] `helm lint charts/helmfile-chart-template -f tests/values-ci.yaml -f tests/values-init.yaml --namespace shop-dev`
 
 **Dependencies:** Task 7
 

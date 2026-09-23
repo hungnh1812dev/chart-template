@@ -73,6 +73,43 @@ golden_diff="$(diff -u "$GOLDEN" - <<<"$rendered")" || fail "default render diff
 $golden_diff"
 pass "default render matches golden"
 
+# --- Init containers ---
+INIT_VALUES="$ROOT/tests/values-init.yaml"
+
+assert_lacks() {
+  local doc="$1" pattern="$2" desc="$3"
+  ! grep -Eq -- "$pattern" <<<"$doc" || fail "$desc (unexpected: $pattern)"
+  pass "$desc"
+}
+
+# Pod-spec sections of a Deployment: init containers vs the app container.
+init_part() { sed -n '/^      initContainers:$/,/^      containers:$/p' <<<"$1" | sed '$d'; }
+app_part()  { sed -n '/^      containers:$/,$p' <<<"$1"; }
+
+render_deploy() {
+  local out
+  out="$(helm template test "$CHART" -f "$VALUES" --namespace "$NAMESPACE" "$@")" \
+    || fail "helm template failed: $*"
+  doc_of_kind Deployment "$out"
+}
+
+assert_lacks "$deploy" 'initContainers:' "default render has no initContainers"
+
+init_deploy="$(render_deploy -f "$INIT_VALUES")"
+init="$(init_part "$init_deploy")"
+[[ -n "$init" ]] || fail "initContainers rendered when enabled"
+assert_has "$init" '^ +(- )?name: migrate$'                       "init container name from values"
+assert_has "$init" '^ +(- )?image: ghcr.io/acme/shop-api:1.2.3$'  "init container image from values"
+assert_has "$init" '^ +- \./migrate$'                             "init container command from values"
+init_line="$(grep -n '^      initContainers:$' <<<"$init_deploy" | cut -d: -f1)"
+app_line="$(grep -n '^      containers:$' <<<"$init_deploy" | cut -d: -f1)"
+(( init_line < app_line )) || fail "initContainers precedes containers"
+pass "initContainers precedes containers"
+assert_has "$(app_part "$init_deploy")" '^        - name: api$'  "app container still rendered with init enabled"
+
+off_deploy="$(render_deploy -f "$INIT_VALUES" --set initContainers.enabled=false)"
+assert_lacks "$off_deploy" 'initContainers:' "enabled=false renders no initContainers even with containers set"
+
 # --- Guards: invalid input must fail rendering with a message naming the problem ---
 # usage: expect_fail <desc> <expected error regex> [extra helm args...]
 expect_fail() {
