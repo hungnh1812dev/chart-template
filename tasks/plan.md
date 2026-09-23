@@ -196,7 +196,7 @@ probes render (values, deployment)
 ## Task List
 
 ### Phase 6: Pull policy and probes
-- [ ] Task 13: Default `image.pullPolicy` to `Always` (and regenerate the golden file)
+- [x] Task 13: Default `image.pullPolicy` to `Always` (and regenerate the golden file)
 - [ ] Task 14: Render liveness and readiness probes behind `probes.enabled`
 - [ ] Task 15: Schema guards for probes
 

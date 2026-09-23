@@ -10,7 +10,7 @@ appPort: 8080
 image:
   repository: ""   # required
   tag: ""          # required
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 replicaCount: 1
 resources: {}

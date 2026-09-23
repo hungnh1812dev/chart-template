@@ -54,6 +54,11 @@ assert_has "$deploy" '^  namespace: shop-dev$'                      "Deployment 
 assert_has "$deploy" '^  replicas: 1$'                              "Deployment replicas default to 1"
 assert_has "$deploy" 'image: "ghcr.io/acme/shop-api:1.2.3"$'        "container image is repository:tag"
 assert_has "$deploy" 'containerPort: 8080$'                         "containerPort is appPort"
+assert_has "$deploy" '^          imagePullPolicy: Always$'          "imagePullPolicy defaults to Always"
+pull_override="$(helm template test "$CHART" -f "$VALUES" --namespace "$NAMESPACE" --set image.pullPolicy=IfNotPresent)" \
+  || fail "helm template failed with image.pullPolicy override"
+assert_has "$(doc_of_kind Deployment "$pull_override")" '^          imagePullPolicy: IfNotPresent$' \
+  "image.pullPolicy override is honored"
 match_labels="$(sed -n '/^    matchLabels:$/,/^  template:$/p' <<<"$deploy")"
 assert_has "$match_labels" 'app.kubernetes.io/instance: shop-api-dev$' "Deployment selector matches on instance"
 pod_labels="$(sed -n '/^  template:$/,/^    spec:$/p' <<<"$deploy")"

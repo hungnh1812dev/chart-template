@@ -324,18 +324,18 @@ Spec: [SPEC.md § v0.3.0](../SPEC.md#v030-health-probes-and-image-pull-policy) �
 
 ## Phase 6: Pull policy and probes
 
-### - [ ] Task 13: Default `image.pullPolicy` to `Always`
+### - [x] Task 13: Default `image.pullPolicy` to `Always`
 
 **Description:** Change the `image.pullPolicy` default in `values.yaml` to `Always`, and regenerate `tests/golden/default.yaml` in the same commit. Add assertions for the new default and for overriding it.
 
 **Acceptance criteria:**
-- [ ] The default render has `imagePullPolicy: Always`
-- [ ] `--set image.pullPolicy=IfNotPresent` renders `imagePullPolicy: IfNotPresent`
-- [ ] `git diff tests/golden/default.yaml` shows exactly one changed line: `IfNotPresent` → `Always`
+- [x] The default render has `imagePullPolicy: Always`
+- [x] `--set image.pullPolicy=IfNotPresent` renders `imagePullPolicy: IfNotPresent`
+- [x] `git diff tests/golden/default.yaml` shows exactly one changed line: `IfNotPresent` → `Always`
 
 **Verification:**
-- [ ] `./tests/run.sh` (the new assertion fails before the change; the golden check fails until the file is regenerated)
-- [ ] `git diff --stat tests/golden/default.yaml` shows 1 insertion and 1 deletion
+- [x] `./tests/run.sh` (the new assertion fails before the change; the golden check fails until the file is regenerated)
+- [x] `git diff --stat tests/golden/default.yaml` shows 1 insertion and 1 deletion
 
 **Dependencies:** None
 
