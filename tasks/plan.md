@@ -54,7 +54,7 @@ Chart.yaml + values.yaml + _helpers.tpl (naming)
 ### Phase 2: Consumption + publishing
 - [x] Task 4: Example consumer helmfile
 - [x] Task 5: GitHub Actions publish workflow
-- [ ] Task 6: README for consumers
+- [x] Task 6: README for consumers
 
 ### Checkpoint B: ready to ship
 - [ ] All local verification commands from SPEC pass

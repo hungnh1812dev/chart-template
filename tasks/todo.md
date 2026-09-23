@@ -127,7 +127,7 @@ Test inputs used throughout: `appName=shop serviceName=api appNamespace=shop app
 
 ---
 
-### - [ ] Task 6: README for consumers
+### - [x] Task 6: README for consumers
 
 **Description:** Cover what the chart does, the naming rules, the 5 inputs + image values, a copy-paste consumer `helmfile.yaml.gotmpl` (OCI form), how to release (bump `Chart.yaml` version, merge to main), the one-time GHCR "make public" step, and local test commands.
 
