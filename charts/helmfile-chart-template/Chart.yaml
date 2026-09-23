@@ -1,5 +1,5 @@
 apiVersion: v2
 name: helmfile-chart-template
-description: Shared Deployment + Service chart; names derived from APP_NAME, SERVICE_NAME, APP_NAMESPACE, APP_ENV.
+description: Shared Deployment + Service chart; names derived from APP_NAME, APP_SERVICE_NAME, APP_NAMESPACE, APP_ENV.
 type: application
 version: 0.3.0

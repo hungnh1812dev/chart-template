@@ -4,18 +4,18 @@
 
 Provide one reusable Helm chart, published to GitHub Container Registry (GHCR) as an OCI artifact, that other projects consume from their own `helmfile.yaml`. A consuming project deploys a service by supplying five inputs and nothing else chart-specific:
 
-| Input           | Example   | Meaning                          |
-|-----------------|-----------|----------------------------------|
-| `APP_NAME`      | `shop`    | Application / product name       |
-| `SERVICE_NAME`  | `api`     | Service within the application   |
-| `APP_NAMESPACE` | `shop`    | Base namespace                   |
-| `APP_ENV`       | `dev`     | Environment (dev, staging, prod) |
-| `APP_PORT`      | `8080`    | Container + Service port         |
+| Input              | Example | Meaning                          |
+|--------------------|---------|----------------------------------|
+| `APP_NAME`         | `shop`  | Application / product name       |
+| `APP_SERVICE_NAME` | `api`   | Service within the application   |
+| `APP_NAMESPACE`    | `shop`  | Base namespace                   |
+| `APP_ENV`          | `dev`   | Environment (dev, staging, prod) |
+| `APP_PORT`         | `8080`  | Container + Service port         |
 
 Derived names (hyphen-joined, since Kubernetes names must be DNS-1123 — `_` is rejected):
 
 - **Full namespace:** `<APP_NAMESPACE>-<APP_ENV>` → `shop-dev`
-- **Full service name:** `<APP_NAME>-<SERVICE_NAME>-<APP_ENV>` → `shop-api-dev`
+- **Full service name:** `<APP_NAME>-<APP_SERVICE_NAME>-<APP_ENV>` → `shop-api-dev`
 
 **Users:** engineers in other repos who need a standard Deployment + Service without writing their own chart.
 
@@ -26,14 +26,14 @@ Derived names (hyphen-joined, since Kubernetes names must be DNS-1123 — `_` is
 ```yaml
 # consumer repo: helmfile.yaml.gotmpl (helmfile v1 renders templates only in *.gotmpl)
 releases:
-  - name: {{ requiredEnv "APP_NAME" }}-{{ requiredEnv "SERVICE_NAME" }}-{{ requiredEnv "APP_ENV" }}
+  - name: {{ requiredEnv "APP_NAME" }}-{{ requiredEnv "APP_SERVICE_NAME" }}-{{ requiredEnv "APP_ENV" }}
     namespace: {{ requiredEnv "APP_NAMESPACE" }}-{{ requiredEnv "APP_ENV" }}
     createNamespace: true
     chart: oci://ghcr.io/hungnh1812dev/helmfile-chart-template
     version: 0.1.0
     values:
       - appName: {{ requiredEnv "APP_NAME" }}
-        serviceName: {{ requiredEnv "SERVICE_NAME" }}
+        serviceName: {{ requiredEnv "APP_SERVICE_NAME" }}
         appNamespace: {{ requiredEnv "APP_NAMESPACE" }}
         appEnv: {{ requiredEnv "APP_ENV" }}
         appPort: {{ requiredEnv "APP_PORT" }}
@@ -43,7 +43,7 @@ releases:
 ```
 
 ```bash
-APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helmfile apply
+APP_NAME=shop APP_SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helmfile apply
 ```
 
 ## Tech Stack
@@ -66,7 +66,7 @@ helm template test charts/helmfile-chart-template -f tests/values-ci.yaml --name
 ./tests/run.sh
 
 # Render the example helmfile against the local chart
-APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 \
+APP_NAME=shop APP_SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 \
   helmfile -f examples/helmfile.yaml.gotmpl template
 
 # Package + publish (what CI does)
@@ -192,7 +192,7 @@ Namespace creation is left to helmfile (`createNamespace: true`), not the chart.
 
 1. **Package visibility:** GHCR packages are private on first publish. Should it be made **public** (manual one-time step in GitHub package settings), or will consumers authenticate with a token?
 2. **Repo name vs package name:** the remote is `hungnh1812dev/chart-template`; the package will be `helmfile-chart-template`. OK as-is?
-3. **Image input:** the 5 inputs don't include the container image, so `image.repository`/`image.tag` are added as required values. Acceptable, or should image come from another convention (e.g. `ghcr.io/<owner>/<APP_NAME>-<SERVICE_NAME>`)?
+3. **Image input:** the 5 inputs don't include the container image, so `image.repository`/`image.tag` are added as required values. Acceptable, or should image come from another convention (e.g. `ghcr.io/<owner>/<APP_NAME>-<APP_SERVICE_NAME>`)?
 4. **Health probes:** add optional liveness/readiness probes on `APP_PORT` (disabled by default)? Currently out of scope.
 
 ---
@@ -211,7 +211,7 @@ Add two opt-in features. Both are **off by default**, so every 0.1.0 consumer up
 - **Init container shape:** the flag plus a raw list of standard Kubernetes container specs. The chart does not inherit the image and has no opinionated fields.
 - **The flag wins:** `initContainers.enabled: false` renders nothing, even when `containers` is non-empty.
 - **Init container guard:** `enabled: true` with an empty `containers` list fails the render.
-- **Secret name:** `<appName>-<serviceName>-secrets-<appEnv>` (e.g. `shop-api-secrets-dev`), derived from the existing inputs with no new input. (`APP_SERVICE_NAME` in the request is the existing `SERVICE_NAME`.)
+- **Secret name:** `<appName>-<serviceName>-secrets-<appEnv>` (e.g. `shop-api-secrets-dev`), derived from the existing inputs with no new input. (`APP_SERVICE_NAME` is the env var that feeds `serviceName`.)
 - **Secret consumption:** `envFrom: [{secretRef: {name: <secretName>}}]`, so each key becomes an env var.
 - **Secret scope:** the app container and every rendered init container.
 - **Secret ownership:** the Secret is created outside the chart, for example with kubectl, External Secrets or sealed-secrets. The chart only references it and never holds secret values. A separate flag, `secrets.enabled` (default `false`), turns the reference on.

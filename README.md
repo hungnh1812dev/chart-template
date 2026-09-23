@@ -6,20 +6,20 @@ Published to GHCR at `oci://ghcr.io/hungnh1812dev/helmfile-chart-template`.
 
 ## Inputs
 
-| Env var         | Chart value    | Example | Meaning                          |
-|-----------------|----------------|---------|----------------------------------|
-| `APP_NAME`      | `appName`      | `shop`  | Application / product name       |
-| `SERVICE_NAME`  | `serviceName`  | `api`   | Service within the application   |
-| `APP_NAMESPACE` | `appNamespace` | `shop`  | Base namespace                   |
-| `APP_ENV`       | `appEnv`       | `dev`   | Environment                      |
-| `APP_PORT`      | `appPort`      | `8080`  | Container and Service port       |
+| Env var            | Chart value    | Example | Meaning                        |
+|--------------------|----------------|---------|--------------------------------|
+| `APP_NAME`         | `appName`      | `shop`  | Application / product name     |
+| `APP_SERVICE_NAME` | `serviceName`  | `api`   | Service within the application |
+| `APP_NAMESPACE`    | `appNamespace` | `shop`  | Base namespace                 |
+| `APP_ENV`          | `appEnv`       | `dev`   | Environment                    |
+| `APP_PORT`         | `appPort`      | `8080`  | Container and Service port     |
 
 You must also set `image.repository` and `image.tag`.
 
 **Derived names:**
 
 - Namespace: `<APP_NAMESPACE>-<APP_ENV>`, e.g. `shop-dev`
-- Deployment and Service name: `<APP_NAME>-<SERVICE_NAME>-<APP_ENV>`, e.g. `shop-api-dev`
+- Deployment and Service name: `<APP_NAME>-<APP_SERVICE_NAME>-<APP_ENV>`, e.g. `shop-api-dev`
 
 Names are joined with `-` because Kubernetes rejects `_` in namespace and Service names.
 
@@ -36,7 +36,7 @@ Create `helmfile.yaml.gotmpl` in your project. Helmfile v1 only renders template
 
 ```yaml
 {{- $appName      := requiredEnv "APP_NAME" }}
-{{- $serviceName  := requiredEnv "SERVICE_NAME" }}
+{{- $serviceName  := requiredEnv "APP_SERVICE_NAME" }}
 {{- $appNamespace := requiredEnv "APP_NAMESPACE" }}
 {{- $appEnv       := requiredEnv "APP_ENV" }}
 {{- $appPort      := requiredEnv "APP_PORT" }}
@@ -61,7 +61,7 @@ releases:
 Then deploy:
 
 ```bash
-APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helmfile apply
+APP_NAME=shop APP_SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helmfile apply
 ```
 
 If an env var is missing, helmfile stops with `required env var APP_ENV is not set`.
@@ -72,7 +72,7 @@ If an env var is missing, helmfile stops with `required env var APP_ENV is not s
 
 Set `secrets.enabled: true` to load a Secret into the app container, and into every init container, as environment variables (`envFrom`). The Secret name is derived:
 
-- Secret name: `<APP_NAME>-<SERVICE_NAME>-secrets-<APP_ENV>`, e.g. `shop-api-secrets-dev`
+- Secret name: `<APP_NAME>-<APP_SERVICE_NAME>-secrets-<APP_ENV>`, e.g. `shop-api-secrets-dev`
 
 **The chart does not create the Secret.** Create it in the release namespace before deploying, using kubectl, External Secrets or sealed-secrets:
 
@@ -146,6 +146,7 @@ Change `version:` in your helmfile, then check the notes for every version you s
 
 ### To 0.3.0
 
+- **Example helmfile:** the example now reads `APP_SERVICE_NAME` instead of `SERVICE_NAME`. The chart value is still `serviceName`, so a helmfile you copied earlier keeps working as-is. Rename the env var only if you want to match the example.
 - **Behavior change:** `image.pullPolicy` now defaults to `Always` instead of `IfNotPresent`. Every pod start pulls from the registry, which adds a registry call and means a pod can't start while the registry is unreachable. To keep the old behavior, set it explicitly:
 
   ```yaml
