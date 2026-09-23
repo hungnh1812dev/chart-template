@@ -15,3 +15,15 @@ image:
 replicaCount: 1
 resources: {}
 env: []            # extra container env vars, e.g. [{name: FOO, value: bar}]
+
+initContainers:
+  enabled: false   # set true to render spec.template.spec.initContainers
+  containers: []   # plain Kubernetes container specs, e.g.
+  # - name: migrate
+  #   image: ghcr.io/acme/shop-api:1.2.3
+  #   command: ["./migrate", "up"]
+
+secrets:
+  enabled: false   # set true to load Secret <appName>-<serviceName>-secrets-<appEnv>
+                   # into the app container and all init containers via envFrom.
+                   # The Secret must already exist in <appNamespace>-<appEnv>.

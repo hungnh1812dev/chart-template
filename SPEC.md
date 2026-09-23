@@ -194,3 +194,155 @@ Namespace creation is left to helmfile (`createNamespace: true`), not the chart.
 2. **Repo name vs package name:** the remote is `hungnh1812dev/chart-template`; the package will be `helmfile-chart-template`. OK as-is?
 3. **Image input:** the 5 inputs don't include the container image, so `image.repository`/`image.tag` are added as required values. Acceptable, or should image come from another convention (e.g. `ghcr.io/<owner>/<APP_NAME>-<SERVICE_NAME>`)?
 4. **Health probes:** add optional liveness/readiness probes on `APP_PORT` (disabled by default)? Currently out of scope.
+
+---
+
+# v0.2.0: Optional init containers and service secret
+
+## Objective
+
+Add two opt-in features. Both are **off by default**, so every 0.1.0 consumer upgrading to 0.2.0 gets identical rendered output with no values changes.
+
+1. **Init containers:** run one or more containers before the app container, for example DB migrations, waiting on a dependency, or fetching config.
+2. **Service secret:** load a pre-existing Kubernetes Secret named by convention into the app container and every init container as environment variables.
+
+**Decisions (confirmed):**
+
+- **Init container shape:** the flag plus a raw list of standard Kubernetes container specs. The chart does not inherit the image and has no opinionated fields.
+- **The flag wins:** `initContainers.enabled: false` renders nothing, even when `containers` is non-empty.
+- **Init container guard:** `enabled: true` with an empty `containers` list fails the render.
+- **Secret name:** `<appName>-<serviceName>-secrets-<appEnv>` (e.g. `shop-api-secrets-dev`), derived from the existing inputs with no new input. (`APP_SERVICE_NAME` in the request is the existing `SERVICE_NAME`.)
+- **Secret consumption:** `envFrom: [{secretRef: {name: <secretName>}}]`, so each key becomes an env var.
+- **Secret scope:** the app container and every rendered init container.
+- **Secret ownership:** the Secret is created outside the chart, for example with kubectl, External Secrets or sealed-secrets. The chart only references it and never holds secret values. A separate flag, `secrets.enabled` (default `false`), turns the reference on.
+- **Secret must exist:** the `secretRef` is not `optional`. If the flag is on and the Secret is missing, pods fail with `CreateContainerConfigError`. That is intended, because a missing secret is a deploy error.
+
+## Values (additions to `values.yaml`)
+
+```yaml
+initContainers:
+  enabled: false     # set true to render spec.template.spec.initContainers
+  containers: []     # plain Kubernetes container specs
+  # - name: migrate
+  #   image: ghcr.io/acme/shop-api:1.2.3
+  #   command: ["./migrate", "up"]
+
+secrets:
+  enabled: false     # set true to load Secret <appName>-<serviceName>-secrets-<appEnv>
+                     # into the app container and all init containers via envFrom.
+                     # The Secret must already exist in <appNamespace>-<appEnv>.
+```
+
+## Rendering
+
+**New helper (`_helpers.tpl`):**
+
+```yaml
+{{- define "chart.secretName" -}}
+{{- printf "%s-%s-secrets-%s" .Values.appName .Values.serviceName .Values.appEnv -}}
+{{- end -}}
+```
+
+It needs no length guard: `fullServiceName` is 63 characters or fewer, so `secretName` is 71 or fewer, well under the 253-character Secret name limit.
+
+**`templates/deployment.yaml`, pod spec:**
+
+- **Init containers** are rendered before `containers:`, only when `initContainers.enabled` is true. When `secrets.enabled` is also true, each item is deep-copied and the `secretRef` is **appended** to its `envFrom`. Any `envFrom` entries the consumer already has are kept, and the consumer's values are never changed in place.
+
+  ```yaml
+      {{- if .Values.initContainers.enabled }}
+      initContainers:
+        {{- range .Values.initContainers.containers }}
+        {{- $c := deepCopy . }}
+        {{- if $.Values.secrets.enabled }}
+        {{- $_ := set $c "envFrom" (append ($c.envFrom | default list) (dict "secretRef" (dict "name" (include "chart.secretName" $)))) }}
+        {{- end }}
+        - {{- toYaml $c | nindent 10 | trim | nindent 10 }}
+        {{- end }}
+      {{- end }}
+  ```
+
+  The exact indentation technique will be settled during implementation. The contract is that the output is a valid list of container specs.
+- **App container:** when `secrets.enabled` is true, it gets `envFrom: [{secretRef: {name: <secretName>}}]` after `env`.
+
+## Validation
+
+- **Schema (`values.schema.json`):**
+  - `initContainers` is an object with `enabled` (boolean) and `containers` (array). Each item is an object that requires `name` and `image`, and `name` must match `dnsName`.
+  - `secrets` is an object with `enabled` (boolean).
+- **Template guard (`chart.validate`):** if `initContainers.enabled` is true and `containers` is empty, fail with `initContainers.enabled is true but initContainers.containers is empty`.
+
+## Consumer usage
+
+```bash
+# one-time, outside helm (or via External Secrets / sealed-secrets)
+kubectl -n shop-dev create secret generic shop-api-secrets-dev \
+  --from-literal=DATABASE_URL=postgres://...
+```
+
+```yaml
+    version: 0.2.0
+    values:
+      - # ...5 inputs + image as before...
+        secrets:
+          enabled: true
+        initContainers:
+          enabled: true
+          containers:
+            - name: migrate
+              image: ghcr.io/acme/shop-api:1.2.3
+              command: ["./migrate", "up"]   # sees DATABASE_URL from the secret
+```
+
+## Files touched
+
+| File | Change |
+|---|---|
+| `charts/helmfile-chart-template/Chart.yaml` | `version: 0.2.0` |
+| `charts/helmfile-chart-template/values.yaml` | add `initContainers` and `secrets` blocks |
+| `charts/helmfile-chart-template/values.schema.json` | add `initContainers` and `secrets` schemas |
+| `charts/helmfile-chart-template/templates/_helpers.tpl` | `chart.secretName` helper, plus the enabled-but-empty guard in `chart.validate` |
+| `charts/helmfile-chart-template/templates/deployment.yaml` | conditional `initContainers:`, plus `envFrom` injection |
+| `tests/run.sh` | new assertions (below) |
+| `tests/values-init.yaml` | new fixture: `initContainers.enabled: true` with one container |
+| `README.md`, `examples/helmfile.yaml.gotmpl` | document both options, the Secret naming convention and the need to pre-create the Secret, and bump version refs to `0.2.0` |
+
+`tests/values-ci.yaml` stays as-is, so it keeps covering the default (both features off) path.
+
+## Testing Strategy (extends `tests/run.sh`)
+
+- **Default off:** the existing render has no `initContainers:`, `envFrom:` or `secrets` reference. Existing assertions stay green, and the resource count is still 2 (the chart never renders a Secret).
+- **Init containers only** (`-f values-init.yaml`): `initContainers:` appears before `containers:`, with `name: migrate`, its image and its command, and no `envFrom`.
+- **The init container flag wins:** `values-init.yaml` plus `--set initContainers.enabled=false` renders no `initContainers:`.
+- **Secrets only** (`--set secrets.enabled=true`): the app container has `envFrom` with `secretRef.name: shop-api-secrets-dev`, and there is no `initContainers:`.
+- **Both on** (`-f values-init.yaml --set secrets.enabled=true`): both the app container and the `migrate` init container have the `secretRef` `shop-api-secrets-dev`.
+- **Consumer's `envFrom` is kept:** an init container with its own `envFrom` (a `configMapRef`) keeps it, and the `secretRef` is added after it.
+- **Guards (`expect_fail`):**
+  - `--set initContainers.enabled=true` with empty containers fails, with a message containing `initContainers.containers is empty`
+  - an init container with no `image` fails on the schema, with a message naming `image`
+  - an init container named `Migrate` (uppercase) fails on the schema
+- `helm lint` passes for each fixture combination
+
+## Boundaries (in addition to v0.1.0)
+
+- **Always:** keep the default render (both flags off) byte-identical to 0.1.0; derive the Secret name only through `chart.secretName`
+- **Ask first:** making the `secretRef` optional; mounting the Secret as files; inheriting the image from `.Values.image`; shared volumes; sidecars
+- **Never:**
+  - render a `Secret` resource or accept secret values through Helm values
+  - enable either feature by default
+  - change a consumer's init container spec in any way beyond appending the `secretRef` to `envFrom` when `secrets.enabled`
+
+## Success Criteria
+
+1. With `tests/values-ci.yaml` alone, `helm template` output is identical to 0.1.0 (`diff` of the renders before and after the change is empty)
+2. `initContainers.enabled: true` with one container renders exactly that container under `initContainers`, and `enabled: false` renders none
+3. `initContainers.enabled: true` with `containers: []` fails the render with the message above
+4. An init container missing `name` or `image`, or with a non-DNS name, fails schema validation
+5. `secrets.enabled: true` adds `envFrom.secretRef.name: shop-api-secrets-dev` to the app container and to every rendered init container, keeping any existing `envFrom` entries
+6. No test combination renders a `Secret` resource, and the resource count stays 2
+7. `tests/run.sh` and `helm lint` pass, `Chart.yaml` is at `0.2.0`, and README and the example are updated
+8. After merging to `main`, CI publishes `ghcr.io/hungnh1812dev/helmfile-chart-template:0.2.0`
+
+## Open Questions
+
+1. Should consumers be able to override the Secret name, for example `secrets.name`, when the convention doesn't fit? This is out of scope for 0.2.0.
