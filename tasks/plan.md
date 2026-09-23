@@ -53,7 +53,7 @@ Chart.yaml + values.yaml + _helpers.tpl (naming)
 
 ### Phase 2: Consumption + publishing
 - [x] Task 4: Example consumer helmfile
-- [ ] Task 5: GitHub Actions publish workflow
+- [x] Task 5: GitHub Actions publish workflow
 - [ ] Task 6: README for consumers
 
 ### Checkpoint B: ready to ship

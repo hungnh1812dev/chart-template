@@ -104,7 +104,7 @@ Test inputs used throughout: `appName=shop serviceName=api appNamespace=shop app
 
 ---
 
-### - [ ] Task 5: GitHub Actions publish workflow
+### - [x] Task 5: GitHub Actions publish workflow
 
 **Description:** Add `.github/workflows/publish.yaml`, triggered only by `push` to `main`, with `packages: write` permission. Steps: set up Helm v4.2.0 and helmfile → lint → `tests/run.sh` → read `Chart.yaml` version → log in to GHCR with `GITHUB_TOKEN` → skip if the version exists → otherwise package and push.
 

@@ -1,0 +1,83 @@
+name: Publish chart
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-chart
+  cancel-in-progress: false
+
+env:
+  CHART_DIR: charts/helmfile-chart-template
+  REGISTRY: oci://ghcr.io/${{ github.repository_owner }}
+  HELM_VERSION: v4.2.0
+  HELMFILE_VERSION: 1.5.2
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Install helmfile
+        run: |
+          base="https://github.com/helmfile/helmfile/releases/download/v${HELMFILE_VERSION}"
+          tarball="helmfile_${HELMFILE_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLO "$base/$tarball"
+          curl -fsSL "$base/helmfile_${HELMFILE_VERSION}_checksums.txt" | grep " $tarball\$" | sha256sum -c -
+          tar -xzf "$tarball" helmfile
+          sudo install helmfile /usr/local/bin/helmfile
+          helmfile --version
+
+      - name: Lint
+        run: helm lint "$CHART_DIR" -f tests/values-ci.yaml --namespace shop-dev
+
+      - name: Test
+        run: ./tests/run.sh
+
+      - name: Read chart version
+        id: chart
+        run: |
+          echo "name=$(helm show chart "$CHART_DIR" | awk '/^name:/{print $2}')" >> "$GITHUB_OUTPUT"
+          echo "version=$(helm show chart "$CHART_DIR" | awk '/^version:/{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      # Never overwrite a published version. Publish only when the registry clearly
+      # says the version is absent ("not found"), or the package doesn't exist yet
+      # (GHCR answers "denied"; if that were a real permission problem, the push fails too).
+      # Any other error (network, 5xx) fails the job instead of risking an overwrite.
+      - name: Check if version already published
+        id: exists
+        env:
+          NAME: ${{ steps.chart.outputs.name }}
+          VERSION: ${{ steps.chart.outputs.version }}
+        run: |
+          if err="$(helm show chart "$REGISTRY/$NAME" --version "$VERSION" 2>&1 >/dev/null)"; then
+            echo "$NAME $VERSION already published, skipping."
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          elif grep -Eq 'not found|denied' <<<"$err"; then
+            echo "$NAME $VERSION not published yet."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Could not determine whether $NAME $VERSION exists: $err"
+            exit 1
+          fi
+
+      - name: Package and push
+        if: steps.exists.outputs.published == 'false'
+        run: |
+          helm package "$CHART_DIR" -d dist/
+          helm push "dist/${{ steps.chart.outputs.name }}-${{ steps.chart.outputs.version }}.tgz" "$REGISTRY"
