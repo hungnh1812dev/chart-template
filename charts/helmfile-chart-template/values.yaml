@@ -1,0 +1,8 @@
+# Required inputs. Full names are derived from these:
+#   namespace:    <appNamespace>-<appEnv>
+#   service name: <appName>-<serviceName>-<appEnv>
+appName: ""
+serviceName: ""
+appNamespace: ""
+appEnv: ""
+appPort: 8080

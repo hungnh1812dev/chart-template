@@ -1,0 +1,9 @@
+appName: shop
+serviceName: api
+appNamespace: shop
+appEnv: dev
+appPort: 8080
+
+image:
+  repository: ghcr.io/acme/shop-api
+  tag: "1.2.3"

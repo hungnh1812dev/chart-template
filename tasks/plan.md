@@ -43,7 +43,7 @@ Chart.yaml + values.yaml + _helpers.tpl (naming)
 ## Task List
 
 ### Phase 1: Chart
-- [ ] Task 1: Chart scaffold + naming helpers + Service slice, with test harness
+- [x] Task 1: Chart scaffold + naming helpers + Service slice, with test harness
 - [ ] Task 2: Deployment slice
 - [ ] Task 3: Input guards + values schema + failure tests
 

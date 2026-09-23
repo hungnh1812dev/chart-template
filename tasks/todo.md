@@ -8,7 +8,7 @@ Test inputs used throughout: `appName=shop serviceName=api appNamespace=shop app
 
 ## Phase 1: Chart
 
-### - [ ] Task 1: Chart scaffold + naming helpers + Service slice
+### - [x] Task 1: Chart scaffold + naming helpers + Service slice
 
 **Description:** Create the chart with values defaults, the `chart.fullNamespace` / `chart.fullServiceName` / `chart.labels` / `chart.selectorLabels` helpers, and a ClusterIP Service. Add the test harness (`tests/run.sh`) with a happy-path assertion so every later task extends the same script.
 
