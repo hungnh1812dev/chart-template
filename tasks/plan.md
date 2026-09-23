@@ -33,7 +33,7 @@ Chart.yaml + values.yaml + _helpers.tpl (naming)
     ├── Deployment ──────┤
     │                    ├── Guards + schema (validate inputs used by both)
     │                    │
-    │                    ├── examples/helmfile.yaml (renders full chart)
+    │                    ├── examples/helmfile.yaml.gotmpl (renders full chart)
     │                    │
     │                    └── publish workflow (runs tests/run.sh + example, then pushes)
     │                                │
@@ -52,7 +52,7 @@ Chart.yaml + values.yaml + _helpers.tpl (naming)
 - [ ] Human reviews rendered manifests
 
 ### Phase 2: Consumption + publishing
-- [ ] Task 4: Example consumer helmfile
+- [x] Task 4: Example consumer helmfile
 - [ ] Task 5: GitHub Actions publish workflow
 - [ ] Task 6: README for consumers
 

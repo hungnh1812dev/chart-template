@@ -19,12 +19,12 @@ Derived names (hyphen-joined, since Kubernetes names must be DNS-1123 — `_` is
 
 **Users:** engineers in other repos who need a standard Deployment + Service without writing their own chart.
 
-**Why GHCR holds a chart, not a helmfile:** Helmfile cannot pull a `helmfile.yaml` from an OCI registry. The shareable unit is the Helm chart; this repo also ships an example `helmfile.yaml` that consumers copy.
+**Why GHCR holds a chart, not a helmfile:** Helmfile cannot pull a `helmfile.yaml` from an OCI registry. The shareable unit is the Helm chart; this repo also ships an example `helmfile.yaml.gotmpl` that consumers copy.
 
 ### Consumer usage (target experience)
 
 ```yaml
-# consumer repo: helmfile.yaml
+# consumer repo: helmfile.yaml.gotmpl (helmfile v1 renders templates only in *.gotmpl)
 releases:
   - name: {{ requiredEnv "APP_NAME" }}-{{ requiredEnv "SERVICE_NAME" }}-{{ requiredEnv "APP_ENV" }}
     namespace: {{ requiredEnv "APP_NAMESPACE" }}-{{ requiredEnv "APP_ENV" }}
@@ -67,7 +67,7 @@ helm template test charts/helmfile-chart-template -f tests/values-ci.yaml --name
 
 # Render the example helmfile against the local chart
 APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 \
-  helmfile -f examples/helmfile.yaml template
+  helmfile -f examples/helmfile.yaml.gotmpl template
 
 # Package + publish (what CI does)
 helm package charts/helmfile-chart-template -d dist/
@@ -85,7 +85,7 @@ charts/helmfile-chart-template/
   templates/deployment.yaml
   templates/service.yaml
 examples/
-  helmfile.yaml           → consumer template; `chart:` points at local path, comment shows OCI form
+  helmfile.yaml.gotmpl    → consumer template; `chart:` points at local path, comment shows OCI form
 tests/
   values-ci.yaml          → valid sample inputs
   run.sh                  → helm template + grep/yq assertions, incl. expected-failure cases
@@ -157,7 +157,7 @@ Namespace creation is left to helmfile (`createNamespace: true`), not the chart.
 - **Render assertions (`tests/run.sh`):** plain bash + `helm template` + `grep`/`yq`
   - happy path: Service/Deployment named `shop-api-dev`, port 8080 on both, labels present
   - failure cases: missing `appName`, wrong release namespace, uppercase name, 64+ char name → `helm template` exits non-zero with expected message
-- **Example helmfile:** `helmfile template` on `examples/helmfile.yaml` renders successfully
+- **Example helmfile:** `helmfile template` on `examples/helmfile.yaml.gotmpl` renders successfully
 - All three run in CI before package/push; no cluster required
 
 ## CI/CD — `.github/workflows/publish.yaml`
@@ -174,7 +174,7 @@ Namespace creation is left to helmfile (`createNamespace: true`), not the chart.
 
 ## Boundaries
 
-- **Always:** bump `Chart.yaml` `version` (SemVer) for any chart change; keep `examples/helmfile.yaml` and README in sync with values; run `tests/run.sh` before committing
+- **Always:** bump `Chart.yaml` `version` (SemVer) for any chart change; keep `examples/helmfile.yaml.gotmpl` and README in sync with values; run `tests/run.sh` before committing
 - **Ask first:** adding resources beyond Deployment/Service (Ingress, HPA, ConfigMap…); adding Helm plugins or new CI dependencies; changing derived naming rules (breaking for consumers); changing registry/owner
 - **Never:** overwrite an existing published version; commit secrets or PATs (use `GITHUB_TOKEN`); use `_` in Kubernetes object names; trigger publishing from non-main branches
 

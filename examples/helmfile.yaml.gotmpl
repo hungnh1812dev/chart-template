@@ -1,0 +1,28 @@
+# Example consumer helmfile. Copy into your project as `helmfile.yaml.gotmpl`
+# (helmfile v1 only renders Go templates in *.gotmpl files).
+#
+# Usage:
+#   APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helmfile apply
+{{- $appName      := requiredEnv "APP_NAME" }}
+{{- $serviceName  := requiredEnv "SERVICE_NAME" }}
+{{- $appNamespace := requiredEnv "APP_NAMESPACE" }}
+{{- $appEnv       := requiredEnv "APP_ENV" }}
+{{- $appPort      := requiredEnv "APP_PORT" }}
+
+releases:
+  - name: {{ $appName }}-{{ $serviceName }}-{{ $appEnv }}
+    namespace: {{ $appNamespace }}-{{ $appEnv }}
+    createNamespace: true
+    # In your project, use the published chart instead:
+    #   chart: oci://ghcr.io/hungnh1812dev/helmfile-chart-template
+    #   version: 0.1.0
+    chart: ../charts/helmfile-chart-template
+    values:
+      - appName: {{ $appName }}
+        serviceName: {{ $serviceName }}
+        appNamespace: {{ $appNamespace }}
+        appEnv: {{ $appEnv }}
+        appPort: {{ $appPort }}
+        image:
+          repository: ghcr.io/acme/shop-api
+          tag: "1.2.3"

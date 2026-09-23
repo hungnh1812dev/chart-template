@@ -83,9 +83,9 @@ Test inputs used throughout: `appName=shop serviceName=api appNamespace=shop app
 
 ## Phase 2: Consumption + publishing
 
-### - [ ] Task 4: Example consumer helmfile
+### - [x] Task 4: Example consumer helmfile
 
-**Description:** Add `examples/helmfile.yaml` that reads the 5 inputs via `requiredEnv` and sets release name, namespace (`createNamespace: true`), and chart values. It uses the local chart path, with a commented OCI `chart:` + `version:` for consumers.
+**Description:** Add `examples/helmfile.yaml.gotmpl` that reads the 5 inputs via `requiredEnv` and sets release name, namespace (`createNamespace: true`), and chart values. It uses the local chart path, with a commented OCI `chart:` + `version:` for consumers.
 
 **Acceptance criteria:**
 - [ ] With the 5 env vars set, `helmfile template` renders `shop-api-dev` Deployment + Service in `shop-dev`
@@ -93,12 +93,12 @@ Test inputs used throughout: `appName=shop serviceName=api appNamespace=shop app
 - [ ] `appPort` reaches the chart as an integer (passes schema)
 
 **Verification:**
-- [ ] `APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helmfile -f examples/helmfile.yaml template`
+- [ ] `APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helmfile -f examples/helmfile.yaml.gotmpl template`
 - [ ] Add this command to `tests/run.sh`
 
 **Dependencies:** Task 3
 
-**Files:** `examples/helmfile.yaml`, `tests/run.sh`
+**Files:** `examples/helmfile.yaml.gotmpl`, `tests/run.sh`
 
 **Scope:** S
 
@@ -129,10 +129,10 @@ Test inputs used throughout: `appName=shop serviceName=api appNamespace=shop app
 
 ### - [ ] Task 6: README for consumers
 
-**Description:** Cover what the chart does, the naming rules, the 5 inputs + image values, a copy-paste consumer `helmfile.yaml` (OCI form), how to release (bump `Chart.yaml` version, merge to main), the one-time GHCR "make public" step, and local test commands.
+**Description:** Cover what the chart does, the naming rules, the 5 inputs + image values, a copy-paste consumer `helmfile.yaml.gotmpl` (OCI form), how to release (bump `Chart.yaml` version, merge to main), the one-time GHCR "make public" step, and local test commands.
 
 **Acceptance criteria:**
-- [ ] Consumer snippet matches `examples/helmfile.yaml` except for the `chart:` line
+- [ ] Consumer snippet matches `examples/helmfile.yaml.gotmpl` except for the `chart:` line
 - [ ] Release process and the skip-if-exists behavior documented
 
 **Verification:**
