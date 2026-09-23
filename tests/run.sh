@@ -64,6 +64,15 @@ kinds="$(grep -c '^kind: ' <<<"$rendered")"
 [[ "$kinds" == 2 ]] || fail "exactly 2 resources rendered (got $kinds)"
 pass "exactly 2 resources rendered"
 
+# --- Golden: default render (all optional features off) must not change ---
+# Regenerate on purpose only:
+#   helm template test charts/helmfile-chart-template -f tests/values-ci.yaml --namespace shop-dev > tests/golden/default.yaml
+GOLDEN="$ROOT/tests/golden/default.yaml"
+[[ -f "$GOLDEN" ]] || fail "golden file missing: $GOLDEN"
+golden_diff="$(diff -u "$GOLDEN" - <<<"$rendered")" || fail "default render differs from golden:
+$golden_diff"
+pass "default render matches golden"
+
 # --- Guards: invalid input must fail rendering with a message naming the problem ---
 # usage: expect_fail <desc> <expected error regex> [extra helm args...]
 expect_fail() {

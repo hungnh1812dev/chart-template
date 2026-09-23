@@ -165,18 +165,18 @@ Fixtures: `tests/values-ci.yaml` covers the default path with both features off.
 
 ## Phase 3: Init containers
 
-### - [ ] Task 7: Golden baseline for the default render
+### - [x] Task 7: Golden baseline for the default render
 
 **Description:** Before changing any template, save the current `helm template` output for `values-ci.yaml` to `tests/golden/default.yaml`. Add a `run.sh` assertion that diffs a fresh render against it. This locks in SPEC success criterion 1: the default render stays byte-identical to 0.1.0.
 
 **Acceptance criteria:**
-- [ ] `tests/golden/default.yaml` is generated from the unmodified chart at the current HEAD
-- [ ] `run.sh` fails and prints the diff when the default render changes
-- [ ] A comment in `run.sh` gives the one-line command to regenerate the golden file on purpose
+- [x] `tests/golden/default.yaml` is generated from the unmodified chart at the current HEAD
+- [x] `run.sh` fails and prints the diff when the default render changes
+- [x] A comment in `run.sh` gives the one-line command to regenerate the golden file on purpose
 
 **Verification:**
-- [ ] `./tests/run.sh` green
-- [ ] Manual: add a stray label to `service.yaml` temporarily, confirm `run.sh` fails with the diff, then revert
+- [x] `./tests/run.sh` green
+- [x] Manual: add a stray label to `service.yaml` temporarily, confirm `run.sh` fails with the diff, then revert
 
 **Dependencies:** None
 
