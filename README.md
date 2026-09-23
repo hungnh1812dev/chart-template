@@ -140,6 +140,27 @@ kubectl -n shop-dev rollout restart deployment/shop-api-dev
 
 Or deploy a new tag, which is the more reproducible option. To go back to the pre-0.3.0 behavior, set `image.pullPolicy: IfNotPresent`.
 
+## Upgrading
+
+Change `version:` in your helmfile, then check the notes for every version you skip.
+
+### To 0.3.0
+
+- **Behavior change:** `image.pullPolicy` now defaults to `Always` instead of `IfNotPresent`. Every pod start pulls from the registry, which adds a registry call and means a pod can't start while the registry is unreachable. To keep the old behavior, set it explicitly:
+
+  ```yaml
+          image:
+            pullPolicy: IfNotPresent
+  ```
+
+  If you already set `image.pullPolicy`, nothing changes for you.
+- **New, off by default:** health probes (`probes.enabled`). See [Health probes](#health-probes).
+
+### To 0.2.0
+
+- No changes needed. With the new options left off, the rendered manifests are identical to 0.1.0.
+- **New, off by default:** init containers (`initContainers.enabled`) and the service Secret (`secrets.enabled`). Create the Secret before you set `secrets.enabled: true`. See [Service secret](#service-secret).
+
 ## Releasing a new version
 
 1. Change the chart under `charts/helmfile-chart-template/`.
