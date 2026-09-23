@@ -46,7 +46,7 @@ releases:
     namespace: {{ $appNamespace }}-{{ $appEnv }}
     createNamespace: true
     chart: oci://ghcr.io/hungnh1812dev/helmfile-chart-template
-    version: 0.1.0
+    version: 0.2.0
     values:
       - appName: {{ $appName }}
         serviceName: {{ $serviceName }}
@@ -67,6 +67,41 @@ APP_NAME=shop SERVICE_NAME=api APP_NAMESPACE=shop APP_ENV=dev APP_PORT=8080 helm
 If an env var is missing, helmfile stops with `required env var APP_ENV is not set`.
 
 **Optional values:** `replicaCount` (default `1`), `resources`, `env` (a list of extra container env vars), and `image.pullPolicy` (default `IfNotPresent`). See [values.yaml](charts/helmfile-chart-template/values.yaml).
+
+### Service secret
+
+Set `secrets.enabled: true` to load a Secret into the app container, and into every init container, as environment variables (`envFrom`). The Secret name is derived:
+
+- Secret name: `<APP_NAME>-<SERVICE_NAME>-secrets-<APP_ENV>`, e.g. `shop-api-secrets-dev`
+
+**The chart does not create the Secret.** Create it in the release namespace before deploying, using kubectl, External Secrets or sealed-secrets:
+
+```bash
+kubectl -n shop-dev create secret generic shop-api-secrets-dev \
+  --from-literal=DATABASE_URL=postgres://...
+```
+
+If the Secret is missing, pods do not start. `kubectl describe pod` shows `CreateContainerConfigError` with `secret "shop-api-secrets-dev" not found`.
+
+### Init containers
+
+Set `initContainers.enabled: true` and list plain Kubernetes container specs under `initContainers.containers`. They run in order before the app container.
+
+```yaml
+        secrets:
+          enabled: true
+        initContainers:
+          enabled: true
+          containers:
+            - name: migrate
+              image: ghcr.io/acme/shop-api:1.2.3
+              command: ["./migrate", "up"]   # sees DATABASE_URL from the secret
+```
+
+- Each container needs a `name` (lowercase letters, digits and `-`) and an `image`. Any other container field is passed through unchanged.
+- When `secrets.enabled` is true, the chart adds the Secret to the end of each init container's `envFrom`. It keeps any `envFrom` entries you set.
+- `enabled: false` renders no init containers, even if `containers` is set, so you can switch them off per environment.
+- `enabled: true` with an empty `containers` list fails rendering.
 
 ## Releasing a new version
 
@@ -98,5 +133,11 @@ helm lint charts/helmfile-chart-template -f tests/values-ci.yaml --namespace sho
 ```
 
 [tests/run.sh](tests/run.sh) renders the chart and the example [examples/helmfile.yaml.gotmpl](examples/helmfile.yaml.gotmpl). It checks the names, ports and labels, and checks that each kind of invalid input is rejected.
+
+It also compares the default render against [tests/golden/default.yaml](tests/golden/default.yaml), so optional features can't change output for consumers who don't enable them. If you change the default output on purpose, regenerate the golden file:
+
+```bash
+helm template test charts/helmfile-chart-template -f tests/values-ci.yaml --namespace shop-dev > tests/golden/default.yaml
+```
 
 The full requirements are in [SPEC.md](SPEC.md).

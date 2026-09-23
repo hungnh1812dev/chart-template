@@ -152,3 +152,164 @@ Test inputs used throughout: `appName=shop serviceName=api appNamespace=shop app
 - [ ] Workflow run green; `ghcr.io/hungnh1812dev/helmfile-chart-template:0.1.0` exists
 - [ ] Re-run with unchanged version → skip, exit 0
 - [ ] Package set public; `helmfile template` against the OCI chart works from a clean dir
+
+---
+
+# v0.2.0: Optional init containers and service secret
+
+Spec: [SPEC.md § v0.2.0](../SPEC.md#v020-optional-init-containers-and-service-secret) · Plan: [plan.md](plan.md#v020-optional-init-containers-and-service-secret)
+
+Fixtures: `tests/values-ci.yaml` covers the default path with both features off. `tests/values-init.yaml` sets `initContainers.enabled: true` with one container: `migrate`, image `ghcr.io/acme/shop-api:1.2.3`, command `["./migrate","up"]`. The expected Secret name is `shop-api-secrets-dev`.
+
+---
+
+## Phase 3: Init containers
+
+### - [x] Task 7: Golden baseline for the default render
+
+**Description:** Before changing any template, save the current `helm template` output for `values-ci.yaml` to `tests/golden/default.yaml`. Add a `run.sh` assertion that diffs a fresh render against it. This locks in SPEC success criterion 1: the default render stays byte-identical to 0.1.0.
+
+**Acceptance criteria:**
+- [x] `tests/golden/default.yaml` is generated from the unmodified chart at the current HEAD
+- [x] `run.sh` fails and prints the diff when the default render changes
+- [x] A comment in `run.sh` gives the one-line command to regenerate the golden file on purpose
+
+**Verification:**
+- [x] `./tests/run.sh` green
+- [x] Manual: add a stray label to `service.yaml` temporarily, confirm `run.sh` fails with the diff, then revert
+
+**Dependencies:** None
+
+**Files:** `tests/golden/default.yaml`, `tests/run.sh`
+
+**Scope:** XS
+
+---
+
+### - [x] Task 8: Render init containers behind a flag
+
+**Description:** Add the `initContainers: {enabled: false, containers: []}` defaults. In `deployment.yaml`, emit `initContainers:` before `containers:` only when `enabled` is true, building the list and then calling `toYaml` once (see the plan). Add the `tests/values-init.yaml` fixture and a helper in `run.sh` that splits the Deployment into its init part and its app part.
+
+**Acceptance criteria:**
+- [x] The default render has no `initContainers:`, and the golden diff is empty
+- [x] `-f values-init.yaml` renders `initContainers:` above `containers:`, containing `name: migrate`, the image and the command
+- [x] `values-init.yaml` with `--set initContainers.enabled=false` renders no `initContainers:` (the flag wins)
+
+**Verification:**
+- [x] `./tests/run.sh`
+- [x] `helm lint charts/helmfile-chart-template -f tests/values-ci.yaml -f tests/values-init.yaml --namespace shop-dev`
+
+**Dependencies:** Task 7
+
+**Files:** `values.yaml`, `templates/deployment.yaml`, `tests/values-init.yaml`, `tests/run.sh`
+
+**Scope:** S
+
+---
+
+### - [x] Task 9: Guards for init containers
+
+**Description:** Add the schema for `initContainers`: `enabled` is a boolean and `containers` is an array. Each item requires `name` and `image`, and `name` must match `dnsName`. In `chart.validate`, fail when `enabled` is true but `containers` is empty.
+
+**Acceptance criteria:**
+- [x] `--set initContainers.enabled=true` fails with a message containing `initContainers.containers is empty`
+- [x] An init container with no `image` fails with a message naming `image`
+- [x] An init container named `Migrate` fails on the schema; `values-ci.yaml` and `values-init.yaml` still render
+
+**Verification:**
+- [x] `./tests/run.sh` (3 new `expect_fail` cases, with the missing-image and uppercase-name cases set through `--set-json`)
+- [x] `helm lint` clean for both fixtures
+
+**Dependencies:** Task 8
+
+**Files:** `values.schema.json`, `templates/_helpers.tpl`, `tests/run.sh`
+
+**Scope:** S
+
+---
+
+### Checkpoint C: init containers complete
+- [x] `./tests/run.sh` green, golden diff empty
+- [x] `helm lint` clean with and without `values-init.yaml`
+- [x] Human reviews the rendered `initContainers` block
+
+---
+
+## Phase 4: Service secret
+
+### - [x] Task 10: Secret `envFrom` on the app container behind a flag
+
+**Description:** Add the `chart.secretName` helper (`<appName>-<serviceName>-secrets-<appEnv>`), the `secrets: {enabled: false}` default with a comment that the Secret must already exist, and the schema for `secrets.enabled` (boolean). When the flag is on, the app container gets `envFrom: [{secretRef: {name: <secretName>}}]` after `env`.
+
+**Acceptance criteria:**
+- [x] With `--set secrets.enabled=true`, the app container has `envFrom` with `name: shop-api-secrets-dev`, and there is no `initContainers:`
+- [x] The default render has no `envFrom:`, and the golden diff is empty
+- [x] No render produces `kind: Secret`, and the resource count stays 2
+
+**Verification:**
+- [x] `./tests/run.sh`
+- [x] `helm lint ... --set secrets.enabled=true`
+
+**Dependencies:** Task 7 (it also edits the files touched by Task 8, so it runs after Task 9)
+
+**Files:** `templates/_helpers.tpl`, `values.yaml`, `values.schema.json`, `templates/deployment.yaml`, `tests/run.sh`
+
+**Scope:** M
+
+---
+
+### - [x] Task 11: Secret `envFrom` into init containers
+
+**Description:** In the init container loop, when `secrets.enabled` is true, append the `secretRef` to the `envFrom` of each deep-copied item, falling back to `default list` when the item has no `envFrom`.
+
+**Acceptance criteria:**
+- [x] With `-f values-init.yaml --set secrets.enabled=true`, both the `migrate` init container and the app container have the `secretRef` `shop-api-secrets-dev` (checked in each container's own part)
+- [x] An init container with its own `envFrom: [{configMapRef: {name: shared}}]` keeps it, and the `secretRef` comes after it
+- [x] With `values-init.yaml` alone (secrets off), the init container has no `envFrom`
+
+**Verification:**
+- [x] `./tests/run.sh`
+- [x] `helm lint ... -f tests/values-init.yaml --set secrets.enabled=true`
+
+**Dependencies:** Tasks 8 and 10
+
+**Files:** `templates/deployment.yaml`, `tests/run.sh`
+
+**Scope:** S
+
+---
+
+### Checkpoint D: features complete
+- [x] All four flag combinations (off/off, init only, secret only, both) render as the SPEC testing strategy describes
+- [x] No combination renders a `Secret`, and the resource count is 2 everywhere
+- [x] Human reviews the full Deployment render with both flags on
+
+---
+
+## Phase 5: Release
+
+### - [x] Task 12: Bump to 0.2.0, update the README and example helmfile
+
+**Description:** Set `Chart.yaml` `version: 0.2.0`. Add README sections for `initContainers` and `secrets`, including the Secret naming convention, a `kubectl create secret` example, and a note that missing Secret means `CreateContainerConfigError`. Update every `0.1.0` reference in the README and example to `0.2.0`, and add commented-out usage of both options to the example helmfile.
+
+**Acceptance criteria:**
+- [x] `Chart.yaml` is at `0.2.0`, and the golden diff is still empty (the chart has no version label)
+- [x] The README documents both flags, the Secret name convention and the pre-create requirement
+- [x] The example helmfile still renders with `helmfile template`, and its OCI comment references `0.2.0`
+
+**Verification:**
+- [x] `./tests/run.sh` (includes the example helmfile render)
+- [x] `grep -rn '0\.1\.0' README.md examples/` returns nothing
+
+**Dependencies:** Tasks 9 and 11
+
+**Files:** `Chart.yaml`, `README.md`, `examples/helmfile.yaml.gotmpl`
+
+**Scope:** S
+
+---
+
+### Checkpoint E: ready to ship 0.2.0
+- [ ] All local verification commands from SPEC pass
+- [ ] Human approves merge to `main`
+- [ ] After the push, the workflow is green and `ghcr.io/hungnh1812dev/helmfile-chart-template:0.2.0` is visible
