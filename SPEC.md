@@ -346,3 +346,141 @@ kubectl -n shop-dev create secret generic shop-api-secrets-dev \
 ## Open Questions
 
 1. Should consumers be able to override the Secret name, for example `secrets.name`, when the convention doesn't fit? This is out of scope for 0.2.0.
+
+---
+
+# v0.3.0: Health probes and image pull policy
+
+Requested as 0.2.1. It is released as **0.3.0** because it adds a feature (probes) and changes a default (`pullPolicy`). Under SemVer that is a minor bump, so consumers pinned to `0.2.x` won't get the new default by accident.
+
+## Objective
+
+1. **Always pull the image:** change the `image.pullPolicy` default from `IfNotPresent` to `Always`. The kubelet then re-pulls the tag on every pod start, so a re-pushed tag is picked up when pods restart. Consumers can still override it. `image.tag` stays required.
+2. **Health probes:** optional HTTP liveness and readiness probes against the app port, **off by default** and turned on with one flag. This follows the same pattern as `initContainers` and `secrets`.
+
+**Decisions (confirmed):**
+
+- The version is `0.3.0`.
+- The `pullPolicy` default becomes `Always`; there is no tag default and no forced rollout annotation.
+- Probes are off by default, and `probes.enabled` turns them on.
+- Probes are `httpGet` on the named port `http` (= `appPort`), with a configurable path and timing per probe.
+
+**Defaults I chose (change them if they're wrong):**
+
+- Both probes default to path `/healthz`, so an app with one health endpoint works without extra settings. Set `readiness.path` separately if the app has a dedicated readiness endpoint.
+- One flag controls both probes; each probe can't be turned on or off separately.
+
+**What "Always" does *not* do:** it only pulls when a pod starts. `helmfile apply` with an unchanged tag and values makes no change to the Deployment, so no pods restart and nothing is re-pulled. To pick up a re-pushed mutable tag, restart the pods (`kubectl rollout restart`) or deploy a new tag. The README must say this.
+
+## Values (changes to `values.yaml`)
+
+```yaml
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: Always       # was IfNotPresent
+
+probes:
+  enabled: false           # set true to add liveness + readiness httpGet probes on appPort
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+  readiness:
+    path: /healthz
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    timeoutSeconds: 1
+    failureThreshold: 3
+```
+
+## Rendering (`templates/deployment.yaml`, app container)
+
+When `probes.enabled` is true, render after `ports`:
+
+```yaml
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            ...
+```
+
+The timing fields come from the probe's values minus `path` (`omit . "path" | toYaml`), so a consumer who overrides one field keeps the defaults for the others through Helm's value merge. The probes point at the named port `http`, so they follow `appPort` automatically. Init containers never get probes; Kubernetes doesn't allow them there.
+
+## Validation (`values.schema.json`)
+
+- `probes.enabled`: boolean
+- `probes.liveness` and `probes.readiness`: objects with `additionalProperties: false`, which catches typos like `periodSecond`
+  - `path`: a string starting with `/`
+  - `initialDelaySeconds`: an integer, 0 or more
+  - `periodSeconds`, `timeoutSeconds` and `failureThreshold`: integers, 1 or more
+- `image.pullPolicy`: unchanged (the enum `Always | IfNotPresent | Never`)
+
+## Files touched
+
+| File | Change |
+|---|---|
+| `charts/helmfile-chart-template/Chart.yaml` | `version: 0.3.0` |
+| `charts/helmfile-chart-template/values.yaml` | set the `pullPolicy` default to `Always`, add the `probes` block |
+| `charts/helmfile-chart-template/values.schema.json` | add the `probes` schema |
+| `charts/helmfile-chart-template/templates/deployment.yaml` | conditional liveness and readiness probes on the app container |
+| `tests/golden/default.yaml` | regenerated on purpose; the **only** diff is `imagePullPolicy: IfNotPresent` → `Always` |
+| `tests/run.sh` | new assertions (below) |
+| `README.md`, `examples/helmfile.yaml.gotmpl` | document both changes, including the "Always ≠ redeploy" caveat, and bump version refs to `0.3.0` |
+
+## Testing Strategy (extends `tests/run.sh`)
+
+- **Pull policy:**
+  - The default render has `imagePullPolicy: Always`.
+  - `--set image.pullPolicy=IfNotPresent` renders `IfNotPresent`.
+  - The golden file is regenerated in the same commit as the default change, and `git diff` on the golden file shows exactly that one line.
+- **Probes off by default:** the default render has no `livenessProbe` or `readinessProbe`, and the golden file shows no probe lines.
+- **Probes on** (`--set probes.enabled=true`): the app container has both probes, with `path: /healthz`, `port: http` and the default timings.
+- **Override:**
+  - `--set probes.readiness.path=/readyz` changes only the readiness path.
+  - `--set probes.liveness.periodSeconds=30` keeps the other liveness defaults.
+- **Init containers stay probe-free:** with `-f values-init.yaml --set probes.enabled=true`, the init section has no probes.
+- **Guards (`expect_fail`):**
+  - `probes.liveness.path=healthz` (no leading `/`) fails
+  - `probes.liveness.periodSeconds=0` fails
+  - an unknown key `probes.readiness.periodSecond=5` fails
+- The resource count is still 2 in every combination.
+
+## Boundaries (in addition to v0.1.0 and v0.2.0)
+
+- **Always:** regenerate the golden file only in the commit that intentionally changes the default, and make sure its diff shows exactly the intended change
+- **Ask first:**
+  - startup probes, or turning each probe on and off separately
+  - `tcpSocket` or `exec` probes
+  - a forced-rollout annotation such as `rollme`
+  - defaulting `image.tag` to `latest`
+- **Never:**
+  - enable probes by default
+  - put probes on init containers
+  - hard-code the probe port as a number instead of the named port `http`
+
+## Success Criteria
+
+1. The default render differs from 0.2.0 only in `imagePullPolicy: Always`, as the golden file diff shows
+2. `image.pullPolicy` overrides still work
+3. `probes.enabled: true` renders liveness and readiness `httpGet` probes on `port: http`, with `/healthz` and the documented timings
+4. Overriding one probe field keeps the other defaults
+5. An invalid path, a non-positive period, or an unknown probe key fails the render
+6. Init containers never get probes
+7. `tests/run.sh` and `helm lint` pass, `Chart.yaml` is at `0.3.0`, and the README (including the "Always only pulls on pod start" caveat) and the example are updated
+
+## Open Questions
+
+1. Is `/healthz` for both probes right, or should readiness default to `/readyz`?
+2. Should each probe be switchable on its own (e.g. readiness only)? This is currently out of scope, under Ask first.

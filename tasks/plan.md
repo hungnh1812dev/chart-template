@@ -161,3 +161,69 @@ Full task details: [todo.md](todo.md#v020-optional-init-containers-and-service-s
 ## Open Questions
 
 - Should the golden file cover only the default render, or also one "all flags on" render? The plan covers only the default, because regex assertions already cover the feature paths.
+
+---
+
+# v0.3.0: Health probes and image pull policy
+
+Source of truth: [SPEC.md § v0.3.0](../SPEC.md#v030-health-probes-and-image-pull-policy)
+
+## Overview
+
+This release makes two changes to the app container:
+
+- The `image.pullPolicy` default becomes `Always`. This intentionally changes the default render.
+- Optional HTTP liveness and readiness probes on the named port `http`, behind `probes.enabled` (default off)
+
+It is released as 0.3.0.
+
+## Architecture Decisions
+
+- **The pull policy change goes first and gets its own commit, together with the regenerated golden file.** It is the only intended change to the default render, so keeping it alone makes the golden diff easy to review: one line. Every later task must keep the golden diff empty.
+- **Probe timings are passed through as `omit $probe "path" | toYaml`.** The template doesn't list each timing field, and Helm's value merge keeps the defaults for any field a consumer doesn't override. The schema (`additionalProperties: false`) restricts which keys are allowed, so the pass-through can't leak arbitrary fields.
+- **Probes use `port: http`**, the named container port that already exists, never a number. They follow `appPort` automatically.
+- **Spec open questions use the spec defaults:** both probes default to `/healthz`, and one flag controls both. Changing this later only touches `values.yaml` and the tests.
+
+## Dependency Graph
+
+```
+pullPolicy default + golden regen   (independent; changes default render)
+probes render (values, deployment)
+    └── probes guards (schema)
+            └── version bump + README + example (documents final behavior)
+```
+
+## Task List
+
+### Phase 6: Pull policy and probes
+- [x] Task 13: Default `image.pullPolicy` to `Always` (and regenerate the golden file)
+- [x] Task 14: Render liveness and readiness probes behind `probes.enabled`
+- [x] Task 15: Schema guards for probes
+
+### Checkpoint F: features complete
+- [x] `./tests/run.sh` green, and the golden diff against 0.2.0 is exactly the pullPolicy line
+- [x] `helm lint` clean with probes on and off
+- [x] Human reviews the rendered probes block
+
+### Phase 7: Release
+- [x] Task 16: Bump to 0.3.0, update the README and example helmfile
+
+### Checkpoint G: ready to ship 0.3.0
+- [ ] All local verification commands pass
+- [ ] Human approves merge to `main`, then CI publishes `:0.3.0`
+
+Full task details: [todo.md](todo.md#v030-health-probes-and-image-pull-policy)
+
+## Risks and Mitigations
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Consumers upgrading to 0.3.0 now always pull, which adds a registry round-trip on every pod start and can fail if the registry is down | Med | Document it in the README with the override (`image.pullPolicy: IfNotPresent`), and use the minor version bump to signal the change |
+| Consumers expect `Always` to redeploy on `helmfile apply` | Med | README caveat: it only pulls on pod start; use `kubectl rollout restart` or a new tag |
+| `additionalProperties: false` rejects a probe field a consumer legitimately wants (e.g. `successThreshold`) | Low | It fails loudly at render time. Adding the field to the schema is a small follow-up (Ask first) |
+| `omit`/`toYaml` key ordering differs from the spec example | Low | Kubernetes ignores the order; assertions match the fields, not their order |
+| An app has no `/healthz`, and turning on probes restarts it repeatedly | Med | Probes are off by default; the README says to set the paths before turning them on |
+
+## Open Questions
+
+- The spec's open questions (a `/readyz` default, switching each probe separately) proceed with the spec defaults unless you say otherwise.

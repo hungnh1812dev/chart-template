@@ -15,7 +15,7 @@ releases:
     createNamespace: true
     # In your project, use the published chart instead:
     #   chart: oci://ghcr.io/hungnh1812dev/helmfile-chart-template
-    #   version: 0.2.0
+    #   version: 0.3.0
     chart: ../charts/helmfile-chart-template
     values:
       - appName: {{ $appName }}
@@ -26,7 +26,7 @@ releases:
         image:
           repository: ghcr.io/acme/shop-api
           tag: "1.2.3"
-        # Optional (0.2.0+), both off by default:
+        # Optional, all off by default:
         # secrets:
         #   enabled: true   # envFrom Secret <APP_NAME>-<SERVICE_NAME>-secrets-<APP_ENV>; must already exist
         # initContainers:
@@ -35,3 +35,7 @@ releases:
         #     - name: migrate
         #       image: ghcr.io/acme/shop-api:1.2.3
         #       command: ["./migrate", "up"]
+        # probes:
+        #   enabled: true   # liveness + readiness httpGet on APP_PORT
+        #   readiness:
+        #     path: /readyz  # default /healthz
