@@ -258,18 +258,18 @@ Fixtures: `tests/values-ci.yaml` covers the default path with both features off.
 
 ---
 
-### - [ ] Task 11: Secret `envFrom` into init containers
+### - [x] Task 11: Secret `envFrom` into init containers
 
 **Description:** In the init container loop, when `secrets.enabled` is true, append the `secretRef` to the `envFrom` of each deep-copied item, falling back to `default list` when the item has no `envFrom`.
 
 **Acceptance criteria:**
-- [ ] With `-f values-init.yaml --set secrets.enabled=true`, both the `migrate` init container and the app container have the `secretRef` `shop-api-secrets-dev` (checked in each container's own part)
-- [ ] An init container with its own `envFrom: [{configMapRef: {name: shared}}]` keeps it, and the `secretRef` comes after it
-- [ ] With `values-init.yaml` alone (secrets off), the init container has no `envFrom`
+- [x] With `-f values-init.yaml --set secrets.enabled=true`, both the `migrate` init container and the app container have the `secretRef` `shop-api-secrets-dev` (checked in each container's own part)
+- [x] An init container with its own `envFrom: [{configMapRef: {name: shared}}]` keeps it, and the `secretRef` comes after it
+- [x] With `values-init.yaml` alone (secrets off), the init container has no `envFrom`
 
 **Verification:**
-- [ ] `./tests/run.sh`
-- [ ] `helm lint ... -f tests/values-init.yaml --set secrets.enabled=true`
+- [x] `./tests/run.sh`
+- [x] `helm lint ... -f tests/values-init.yaml --set secrets.enabled=true`
 
 **Dependencies:** Tasks 8 and 10
 
@@ -280,8 +280,8 @@ Fixtures: `tests/values-ci.yaml` covers the default path with both features off.
 ---
 
 ### Checkpoint D: features complete
-- [ ] All four flag combinations (off/off, init only, secret only, both) render as the SPEC testing strategy describes
-- [ ] No combination renders a `Secret`, and the resource count is 2 everywhere
+- [x] All four flag combinations (off/off, init only, secret only, both) render as the SPEC testing strategy describes
+- [x] No combination renders a `Secret`, and the resource count is 2 everywhere
 - [ ] Human reviews the full Deployment render with both flags on
 
 ---

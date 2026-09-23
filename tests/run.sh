@@ -126,6 +126,34 @@ kinds="$(grep -c '^kind: ' <<<"$secret_rendered")"
 [[ "$kinds" == 2 ]] || fail "secrets: exactly 2 resources rendered (got $kinds)"
 pass "secrets: exactly 2 resources rendered"
 
+assert_lacks "$init" 'envFrom:' "init container has no envFrom when secrets disabled"
+
+both_deploy="$(render_deploy -f "$INIT_VALUES" --set secrets.enabled=true)"
+both_init="$(init_part "$both_deploy")"
+assert_has "$both_init" '^ +- secretRef:$'                         "secrets+init: init container envFrom uses secretRef"
+assert_has "$both_init" '^ +name: shop-api-secrets-dev$'           "secrets+init: init container gets the service Secret"
+assert_has "$(app_part "$both_deploy")" '^                name: shop-api-secrets-dev$' \
+  "secrets+init: app container still gets the service Secret"
+
+keep_deploy="$(render_deploy --set initContainers.enabled=true --set secrets.enabled=true \
+  --set-json 'initContainers.containers=[{"name":"migrate","image":"x:1","envFrom":[{"configMapRef":{"name":"shared"}}]}]')"
+keep_init="$(init_part "$keep_deploy")"
+assert_has "$keep_init" '^ +- configMapRef:$'                      "secrets+init: consumer envFrom entry kept"
+assert_has "$keep_init" '^ +name: shared$'                         "secrets+init: consumer envFrom name kept"
+cm_line="$(grep -n 'configMapRef:' <<<"$keep_init" | cut -d: -f1)"
+sr_line="$(grep -n 'secretRef:' <<<"$keep_init" | cut -d: -f1)"
+[[ -n "$sr_line" ]] && (( cm_line < sr_line )) || fail "secretRef appended after consumer envFrom"
+pass "secretRef appended after consumer envFrom"
+
+# Every flag combination: exactly Deployment + Service, never a Secret.
+for combo in "" "-f $INIT_VALUES" "--set secrets.enabled=true" "-f $INIT_VALUES --set secrets.enabled=true"; do
+  # shellcheck disable=SC2086
+  out="$(helm template test "$CHART" -f "$VALUES" --namespace "$NAMESPACE" $combo)" || fail "render failed: [$combo]"
+  [[ "$(grep -c '^kind: ' <<<"$out")" == 2 ]] && ! grep -q '^kind: Secret$' <<<"$out" \
+    || fail "expected exactly Deployment + Service for [$combo]"
+done
+pass "all flag combinations render exactly Deployment + Service"
+
 # --- Guards: invalid input must fail rendering with a message naming the problem ---
 # usage: expect_fail <desc> <expected error regex> [extra helm args...]
 expect_fail() {

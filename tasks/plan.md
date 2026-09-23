@@ -133,11 +133,11 @@ The two feature tracks are independent until Task 11. They are kept sequential a
 
 ### Phase 4: Service secret
 - [x] Task 10: Secret `envFrom` on the app container behind a flag
-- [ ] Task 11: Secret `envFrom` into init containers, keeping the consumer's `envFrom`
+- [x] Task 11: Secret `envFrom` into init containers, keeping the consumer's `envFrom`
 
 ### Checkpoint D: features complete
-- [ ] All four flag combinations render as the SPEC testing strategy describes
-- [ ] No combination renders a `Secret`, and the resource count is 2 everywhere
+- [x] All four flag combinations render as the SPEC testing strategy describes
+- [x] No combination renders a `Secret`, and the resource count is 2 everywhere
 
 ### Phase 5: Release
 - [ ] Task 12: Bump to 0.2.0, update the README and example helmfile

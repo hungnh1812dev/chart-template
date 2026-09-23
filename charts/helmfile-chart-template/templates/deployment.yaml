@@ -17,8 +17,17 @@ spec:
         {{- include "chart.labels" . | nindent 8 }}
     spec:
       {{- if .Values.initContainers.enabled }}
+      {{- /* Copy each item so the Secret can be appended without mutating .Values. */}}
+      {{- $initContainers := list }}
+      {{- range .Values.initContainers.containers }}
+      {{- $c := deepCopy . }}
+      {{- if $.Values.secrets.enabled }}
+      {{- $_ := set $c "envFrom" (append ($c.envFrom | default list) (dict "secretRef" (dict "name" (include "chart.secretName" $)))) }}
+      {{- end }}
+      {{- $initContainers = append $initContainers $c }}
+      {{- end }}
       initContainers:
-        {{- toYaml .Values.initContainers.containers | nindent 8 }}
+        {{- toYaml $initContainers | nindent 8 }}
       {{- end }}
       containers:
         - name: {{ .Values.serviceName }}
